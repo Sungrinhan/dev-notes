@@ -9,8 +9,8 @@
 <meta name="description" content="온라인 서점에 쿠폰 할인을 추가하는 예제로 레이어드, 모듈러 모놀리스, 마이크로커널의 분할 기준과 변경 범위, 트레이드오프를 비교한 학습 노트입니다.">
 <link rel="canonical" href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">
 <meta name="author" content="HanSungLin">
-<meta name="blog-source-sha256" content="11a9fee90ab73262b646b75795762cf952577fec3d331d0e12dc90850f0d5336">
-<meta name="blog-body-sha256" content="72a1012bc431889b467d3a7adb567b0fc2d0b923df528af073028a9877c85fe6">
+<meta name="blog-source-sha256" content="f9d9fe7e1b85f09e27be42172b67dd64215a496d2f4a7359f2ebccc806cd783a">
+<meta name="blog-body-sha256" content="afc68c4f39646e7745286a58b8185825c50d71e2d098704beed1687851fa456c">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="article">
 <meta property="og:title" content="레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기">
@@ -230,6 +230,11 @@ register((order, price) =&gt;
 return orderService.placeOrder(req.userId, req.bookId, req.couponCode);
 
 // business/orderService.ts: 할인을 계산한다
+// applyCoupon도 이 파일 안에 함께 둔다(새 파일을 만들지 않음)
+function applyCoupon(coupon: Coupon, price: number): number {
+  return Math.floor(price * (1 - coupon.rate));
+}
+
 const coupon = couponCode ? couponRepository.find(couponCode) : undefined;
 const total = coupon ? applyCoupon(coupon, book.price) : book.price;
 
