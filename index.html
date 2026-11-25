@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dev-notes</title>
+<meta name="description" content="소프트웨어 아키텍처를 공부하며 정리한 학습 노트">
+<style>
+:root{--bg:#f6f4ee;--fg:#16343b;--muted:#55707a;--accent:#c8642b;--card:#fff;--line:#e3dfd4}
+@media (prefers-color-scheme:dark){:root{--bg:#12191c;--fg:#e6eef0;--muted:#9fb3b9;--card:#1a2427;--line:#2a3639}}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.6}
+main{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+header p{color:var(--muted);margin:.4em 0 0}
+.k{color:var(--accent);font-weight:600;font-size:.9rem;margin:40px 0 12px}
+.card{display:grid;grid-template-columns:200px 1fr;gap:18px;padding:14px;margin-bottom:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;color:inherit;text-decoration:none}
+.card:hover{border-color:var(--accent)}
+.card img{width:100%;height:auto;border-radius:8px}
+.card span{color:var(--accent);font-size:.85rem;font-weight:600}
+.card h2{font-size:1.1rem;margin:.2em 0;word-break:keep-all}
+.card p{color:var(--muted);font-size:.9rem;margin:0}
+@media (max-width:560px){.card{grid-template-columns:1fr}}
+</style></head><body><main>
+<header><h1>dev-notes</h1><p>TypeScript·Node.js 백엔드 개발자가 소프트웨어 아키텍처를 공부하며 남기는 학습 노트</p></header>
+<div class="k">아키텍처 스타일 시리즈</div>
+<a class="card" href="posts/monolith-architecture-styles/"><img src="posts/monolith-architecture-styles/hero.webp" alt="" loading="lazy" width="1200" height="630"><div><span>1편</span><h2>레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기</h2><p>온라인 서점에 쿠폰 할인을 추가하는 예제로 레이어드, 모듈러 모놀리스, 마이크로커널의 분할 기준과 변경 범위, 트레이드오프를 비교한 학습 노트입니다.</p></div></a>
+<a class="card" href="posts/distributed-architecture-tail-latency/"><img src="posts/distributed-architecture-tail-latency/hero.webp" alt="" loading="lazy" width="1200" height="630"><div><span>2편</span><h2>분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용</h2><p>서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.</p></div></a>
+<a class="card" href="posts/architecture-quantum-granularity/"><img src="posts/architecture-quantum-granularity/hero.webp" alt="" loading="lazy" width="1200" height="630"><div><span>3편</span><h2>아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기</h2><p>서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.</p></div></a>
+</main></body></html>

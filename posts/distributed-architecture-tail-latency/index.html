@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d9488" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+<title>분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용</title>
+<meta name="description" content="서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.">
+<link rel="canonical" href="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/">
+<meta name="author" content="HanSungLin">
+<meta name="blog-source-sha256" content="a42d1d0092a1464ddd10488e1c0c5c914b38c674fdaac9e027efb71796afb121">
+<meta name="blog-body-sha256" content="66be762affbc5108d2d218eb9223da4f1f9321f0063fbebe40687bd3f26fedbd">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:title" content="분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용">
+<meta property="og:description" content="서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.">
+<meta property="og:url" content="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/">
+<meta property="og:image" content="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/hero.webp">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="분산 아키텍처 5가지 스타일과 꼬리 지연: 거친 서비스 수가 1개에서 20개로 늘 때 p99가 18ms에서 579ms로 커지는 막대 도식">
+<meta property="og:site_name" content="sungrinhan.github.io">
+<meta property="article:published_time" content="2026-11-25">
+<meta property="article:author" content="HanSungLin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용">
+<meta name="twitter:description" content="서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.">
+<meta name="twitter:image" content="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/hero.webp">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용", "description": "서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.", "image": "https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/hero.webp", "datePublished": "2026-11-25", "dateModified": "2026-11-25", "author": {"@type": "Person", "name": "HanSungLin"}, "wordCount": 1791, "keywords": "소프트웨어 아키텍처, 분산 아키텍처, 마이크로서비스, 꼬리 지연, p99", "inLanguage": "ko", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/"}}</script>
+<style>
+:root{--bg:#fafaf9;--surface:#fff;--text:#1c1917;--muted:#57534e;--soft:#78716c;--accent:#0f766e;--accent-soft:#ccfbf1;--accent-deep:#115e59;--border:#e7e5e4;--code-bg:#f5f5f4;--warn:#b91c1c;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04)}
+@media (prefers-color-scheme:dark){:root{--bg:#18181b;--surface:#27272a;--text:#fafafa;--muted:#a1a1aa;--soft:#92929c;--accent:#2dd4bf;--accent-soft:#134e4a;--accent-deep:#99f6e4;--border:#3f3f46;--code-bg:#1f1f23;--warn:#fca5a5;--shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3)}}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.65;margin:0;font-size:17px;-webkit-font-smoothing:antialiased}
+article{max-width:740px;margin:0 auto;padding:3rem 1.5rem 5rem}
+.kicker{font-family:ui-monospace,"SF Mono",Monaco,monospace;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 .85rem;font-weight:600}
+h1{font-size:clamp(2rem,5vw,2.85rem);line-height:1.12;letter-spacing:-.025em;margin:0 0 1.1rem;font-weight:800}
+.dek{color:var(--muted);font-size:clamp(1.05rem,2.5vw,1.2rem);line-height:1.5;margin:0 0 1.75rem;max-width:60ch}
+.byline{color:var(--soft);font-size:.875rem;font-family:ui-monospace,monospace;margin:0 0 2.5rem}
+.updated{color:var(--soft);font-size:.875rem;font-family:ui-monospace,monospace;margin:0 0 2.5rem}
+.byline + .updated{margin-top:-2rem}
+.byline strong{color:var(--text);font-weight:600}
+.hero{margin:0 0 2.5rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.hero img{display:block;width:100%;height:auto;aspect-ratio:1200/630;object-fit:cover}
+h2{font-size:clamp(1.4rem,3vw,1.75rem);line-height:1.22;letter-spacing:-.015em;margin:3rem 0 1rem;font-weight:700;scroll-margin-top:1rem}
+h3{font-size:1.2rem;margin:2rem 0 .75rem;font-weight:700}
+p{margin:0 0 1.25rem}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:var(--accent-deep)}
+code{font-family:ui-monospace,"SF Mono",Monaco,monospace;font-size:.9em;background:var(--code-bg);border:1px solid var(--border);padding:.1em .4em;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;font-size:.875rem}
+pre code{background:none;border:none;padding:0}
+blockquote{border-left:3px solid var(--accent);padding:.4rem 0 .4rem 1.25rem;margin:0 0 1.5rem;color:var(--muted)}
+ul,ol{margin:0 0 1.25rem;padding-left:1.5rem}
+li{margin:.35rem 0}
+strong{font-weight:700;color:var(--text)}
+img{max-width:100%;height:auto}
+svg{max-width:100%;height:auto}
+figure{margin:0 0 1.75rem}
+figure svg{display:block;margin:0 auto}
+figcaption{color:var(--muted);font-size:.875rem;margin-top:.5rem}
+.table-wrap{max-width:100%;overflow-x:auto;margin:0 0 1.5rem;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}
+th{background:var(--code-bg);font-weight:700}
+.post-footer{margin-top:4rem;padding-top:2rem;border-top:1px solid var(--border);font-size:.875rem;color:var(--muted);font-family:ui-monospace,monospace;display:flex;flex-wrap:wrap;gap:.6rem 1.5rem;justify-content:space-between}
+.post-footer a{color:var(--accent);text-decoration:none}
+::selection{background:var(--accent);color:var(--bg)}
+@media print{body{background:#fff;color:#000;font-size:11pt}article{max-width:none;padding:0 1rem}.hero{box-shadow:none}.table-wrap{overflow:visible}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<article>
+<header>
+<p class="kicker">아키텍처 스타일 시리즈 2편</p>
+<h1>분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용</h1>
+<p class="dek">서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.</p>
+<p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 8 min read &middot; 1791 words</p>
+</header>
+<figure class="hero"><img src="hero.webp" alt="분산 아키텍처 5가지 스타일과 꼬리 지연: 거친 서비스 수가 1개에서 20개로 늘 때 p99가 18ms에서 579ms로 커지는 막대 도식" width="1200" height="630"></figure>
+<!--bs-body:start--><p>모놀리식 애플리케이션을 여러 서비스로 나누면 내부 함수 호출이 네트워크 요청으로 바뀐다. 그 순간 지연과 실패라는 비용이 생긴다. 수강 중인 온라인 소프트웨어 아키텍처 강의에서 이번 수업은 분산 아키텍처의 다섯 가지 스타일을 비교하고, 서비스를 여러 번 거칠수록 느린 요청이 늘어나는 꼬리 지연을 시뮬레이션으로 확인했다. 수업 실습은 파이썬이었는데, 나는 TypeScript로 옮겨 직접 돌렸다. 그 결과 서비스마다 느린 호출 확률이 1%뿐인데도 10개 서비스를 거치면 요청의 9.6%가 느린 호출을 한 번 이상 만났다. 이 글은 그 결과와 스타일 선택 기준을 정리한 학습 노트다.</p>
+<blockquote>
+<p><strong>핵심 요약</strong></p>
+<ul>
+<li>분산은 확장을 쉽게 해 주는 대신 함수 호출을 네트워크 호출로 바꾼다. 네트워크가 믿을 만하고 지연이 없다는 가정은 분산 컴퓨팅의 대표적인 오류다.</li>
+<li>서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스는 각자 다른 품질을 얻고 다른 비용을 낸다.</li>
+<li>스타일은 확장성, 성능 같은 품질 요구사항 중 설계를 이끄는 소수의 드라이빙 특성을 먼저 정한 뒤 고른다.</li>
+<li>각 서비스가 빨라도 여러 서비스를 거치면 느린 호출을 만날 확률이 쌓인다. 내 시뮬레이션에서 p99는 서비스 1개일 때 17.5ms, 10개일 때 299ms였다. 평균만 봐서는 이 변화가 잘 안 보인다.</li>
+<li>전부 나누기보다 연말에 트래픽이 몰리는 주문 도메인처럼 꼭 필요한 부분만 떼어 내는 접근이 현실적이다.</li>
+</ul>
+</blockquote>
+<h2>분산 아키텍처는 왜 필요하고 무엇을 대가로 내나</h2>
+<p>분산 아키텍처는 애플리케이션을 여러 배포 단위로 나누고 네트워크로 연결하는 구조다. 시리즈 1편에서 다룬 모놀리식은 배포 단위가 하나라서, 트래픽이 늘면 전체를 통째로 복제해 확장해야 한다. 주문 화면만 붐벼도 카탈로그와 리뷰 코드까지 같이 늘어난다.</p>
+<p>앱을 나누면 필요한 부분만 키울 수 있다. 대신 프로세스 안의 함수 호출이던 것이 네트워크 요청이 된다. 함수 호출은 거의 실패하지 않고 지연도 일정하지만, 네트워크 요청은 느려지고, 끊기고, 가끔 아예 응답이 없다.</p>
+<h3>분산 컴퓨팅에서 피해야 할 여덟 가지 가정</h3>
+<p>분산 시스템을 설계할 때 흔히 빠지는 잘못된 가정을 정리한 목록이 있다. <a href="https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing">분산 컴퓨팅의 오류(Fallacies of distributed computing)</a>는 1994년 썬 마이크로시스템즈의 L. Peter Deutsch가 일곱 가지로 정리했고, 1997년 무렵 James Gosling이 여덟 번째를 더했다.</p>
+<ol>
+<li>네트워크는 안정적이다.</li>
+<li>지연은 0이다.</li>
+<li>대역폭은 무한하다.</li>
+<li>네트워크는 안전하다.</li>
+<li>토폴로지는 바뀌지 않는다.</li>
+<li>관리자는 한 명이다.</li>
+<li>전송 비용은 0이다.</li>
+<li>네트워크는 균일하다.</li>
+</ol>
+<p>수업에서 강조한 건 앞의 두 가지였다. 네트워크가 늘 성공하고 즉시 응답한다고 가정하면, 서비스 하나의 일시적인 지연이 전체 요청을 붙잡는 상황을 설계 단계에서 놓친다. 뒤에서 볼 꼬리 지연이 바로 두 번째 가정이 깨진 결과다.</p>
+<h2>분산 아키텍처 5가지 스타일 비교</h2>
+<p>마크 리처즈와 닐 포드의 <a href="https://www.oreilly.com/library/view/fundamentals-of-software/9781492043447/">『Fundamentals of Software Architecture』(O'Reilly)</a>(국내판 『소프트웨어 아키텍처 101』)은 분산 스타일을 아래처럼 나눈다. 수업도 같은 분류를 따랐다.</p>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>스타일</th>
+<th>핵심 구조</th>
+<th>얻는 것</th>
+<th>내는 비용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>서비스 기반</td>
+<td>큰 단위 서비스 몇 개가 데이터베이스 하나를 공유</td>
+<td>트랜잭션 처리가 쉽고 도입이 단순함</td>
+<td>스키마 변경이 여러 서비스에 번짐</td>
+</tr>
+<tr>
+<td>이벤트 드리븐</td>
+<td>서비스가 비동기 이벤트를 주고받음</td>
+<td>응답성, 확장성</td>
+<td>이벤트 순서와 실패 처리가 어려움</td>
+</tr>
+<tr>
+<td>스페이스 기반</td>
+<td>데이터를 메모리 격자에 두고 처리</td>
+<td>DB 병목 감소, 급격한 트래픽에 강함</td>
+<td>구조가 복잡하고 메모리 비용이 큼</td>
+</tr>
+<tr>
+<td>오케스트레이션 SOA</td>
+<td>ESB가 서비스 호출을 중앙에서 조율</td>
+<td>서비스 재사용</td>
+<td>중앙 집중으로 결합도가 커짐</td>
+</tr>
+<tr>
+<td>마이크로서비스</td>
+<td>서비스마다 데이터베이스를 따로 둠</td>
+<td>독립 배포와 확장</td>
+<td>운영 복잡도, 네트워크 호출 비용</td>
+</tr>
+</tbody>
+</table></div>
+<h3>서비스 기반 아키텍처</h3>
+<p>서비스 기반 아키텍처는 애플리케이션을 주문, 회원, 카탈로그처럼 큰 단위 서비스로 나누고(리처즈와 포드는 보통 4~12개 정도로 본다) 데이터베이스는 하나를 같이 쓴다. 같은 DB를 쓰니 주문과 재고를 한 트랜잭션으로 묶기 쉽다. 반면 테이블 하나를 바꾸면 그 테이블을 읽는 서비스를 모두 확인해야 한다. 분산으로 가는 첫 단계로 고르기 좋은 스타일이다.</p>
+<h3>이벤트 드리븐 아키텍처</h3>
+<p>이벤트 드리븐은 서비스가 서로를 직접 부르지 않고 "주문 생성됨" 같은 이벤트를 발행하고 구독한다. 주문 서비스는 이벤트만 던지고 바로 응답하므로 사용자가 기다리는 시간이 짧다. 대신 이벤트가 순서대로 도착한다는 보장이 약하고, 중간에 실패한 처리를 되돌리기 어렵다. 마틴 파울러는 <a href="https://martinfowler.com/articles/201701-event-driven.html">「What do you mean by "Event-Driven"?」</a>에서 같은 이름 아래 서로 다른 패턴들이 섞여 있다고 짚는데, 설계 전에 어떤 의미의 이벤트 드리븐인지 팀이 합의해 두는 게 좋겠다고 느꼈다.</p>
+<h3>스페이스 기반 아키텍처</h3>
+<p><a href="https://en.wikipedia.org/wiki/Space-based_architecture">스페이스 기반 아키텍처</a>는 처리 단위마다 데이터를 메모리에 복제해 두고, 데이터베이스에는 비동기로 나중에 반영한다. 요청이 DB를 거치지 않으니 티켓 오픈이나 한정 판매처럼 순간 트래픽이 몰리는 곳에서 DB 병목을 줄인다. 그만큼 메모리 비용이 크고, 복제와 동기화 구조를 이해하고 운영하기가 어렵다.</p>
+<h3>오케스트레이션 기반 SOA</h3>
+<p>오케스트레이션 기반 SOA는 ESB(엔터프라이즈 서비스 버스)가 서비스 호출을 중앙에서 조율하며 재사용을 추구했다. 재사용을 위해 공통 서비스를 많이 만들수록 모든 흐름이 ESB와 공통 서비스에 묶였다. 결과적으로 한 곳을 바꾸면 여러 업무 흐름이 함께 흔들리는 높은 결합도가 남았다. 수업에서는 이 스타일을 "재사용이 결합을 만든 사례"로 소개했다.</p>
+<h3>마이크로서비스</h3>
+<p>마이크로서비스는 서비스마다 데이터베이스를 따로 두어 독립적으로 배포하고 확장한다. 제임스 루이스와 마틴 파울러의 <a href="https://martinfowler.com/articles/microservices.html">「Microservices」</a>는 각 서비스가 자기 데이터를 관리하는 분산 데이터 관리를 특징으로 꼽는다. 독립성이 큰 만큼 서비스 수만큼 배포 파이프라인, 모니터링, 장애 대응이 늘고, 서비스 사이의 호출은 전부 네트워크를 탄다.</p>
+<h2>품질 요구사항으로 스타일을 고르는 법</h2>
+<p>스타일 선택의 출발점은 품질 요구사항이다. 확장성, 탄력성, 성능, 가용성, 단순함, 비용 같은 특성은 서로 맞바꾸는 관계에 있다. 단순하고 싼 구조를 원하면 확장성과 탄력성을 덜 얻고, 확장성과 탄력성을 원하면 복잡도와 비용을 더 낸다.</p>
+<p>그래서 수업은 모든 특성을 다 챙기려 하지 말고, 설계를 이끄는 소수의 드라이빙 특성을 먼저 고르라고 했다. 『Fundamentals of Software Architecture』에서 리처즈와 포드는 이를 아키텍처 특성 중 몇 개만 우선순위로 정하는 일로 설명한다. 서점이라면 이런 식이다.</p>
+<ul>
+<li><strong>평소엔 조용하고 연말에만 주문이 몰린다</strong>: 탄력성이 드라이빙 특성이다. 주문만 따로 늘릴 수 있는 구조가 필요하다.</li>
+<li><strong>팀이 작고 기능이 자주 바뀐다</strong>: 단순함과 변경 속도가 우선이다. 모놀리스나 서비스 기반이 맞다.</li>
+<li><strong>결제와 재고가 정확히 맞아야 한다</strong>: 데이터 정합성이 우선이다. 공유 DB 트랜잭션이 가능한 서비스 기반이 유리하다.</li>
+</ul>
+<h2>TypeScript로 확인한 꼬리 지연</h2>
+<p>꼬리 지연은 지연 분포의 끝부분, 즉 가장 느린 소수 요청이 겪는 지연을 말한다. 보통 p99(100번 중 가장 느린 1번 정도의 지연)로 잰다. 서비스 하나는 대부분 빨라도, 요청이 여러 서비스를 거치면 그중 하나라도 느릴 확률이 쌓인다.</p>
+<h3>시뮬레이션 설정</h3>
+<p>수업의 파이썬 예제를 TypeScript로 옮겨 Node.js 24에서 직접 돌렸다. 설정은 다음과 같다.</p>
+<ul>
+<li>서비스 호출 한 번은 99% 확률로 평균 10ms(표준편차 2ms), 1% 확률로 200ms가 걸린다.</li>
+<li>요청 하나가 서비스 1, 3, 5, 10, 20개를 순서대로 거친다.</li>
+<li>요청 10만 건을 보내고 평균, p50, p99, 그리고 느린 호출을 한 번 이상 만난 요청 비율을 잰다. <code>Math.random()</code>은 시드를 정할 수 없어서 작은 시드 고정 난수 생성기(mulberry32)를 넣고 시드를 42로 고정했다.</li>
+</ul>
+<pre><code class="language-ts">function mulberry32(seed: number): () =&gt; number {
+  return () =&gt; {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed &gt;&gt;&gt; 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t &gt;&gt;&gt; 7), 61 | t)) ^ t;
+    return ((t ^ (t &gt;&gt;&gt; 14)) &gt;&gt;&gt; 0) / 4294967296;
+  };
+}
+
+const random = mulberry32(42);
+const SLOW_RATE = 0.01;
+
+// 박스-뮬러 변환으로 정규분포 값을 만든다
+function gauss(mean: number, sd: number): number {
+  const u = 1 - random();
+  const v = random();
+  return mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function call(): number {
+  if (random() &lt; SLOW_RATE) return 200;
+  return Math.max(1, gauss(10, 2));
+}
+
+function request(nServices: number): number {
+  let total = 0;
+  for (let i = 0; i &lt; nServices; i++) total += call();
+  return total;
+}
+</code></pre>
+<p>요청 10만 건을 보내고 지연을 정렬해 p50, p99를 뽑는 부분은 이렇다. 백분위수는 보간 없이 정렬한 배열에서 해당 순위의 값을 그대로 쓴다.</p>
+<pre><code class="language-ts">function percentile(values: number[], q: number): number {
+  const sorted = [...values].sort((a, b) =&gt; a - b);
+  return sorted[Math.floor(sorted.length * q) - 1];
+}
+
+const totals = Array.from({ length: 100_000 }, () =&gt; request(10)); // 서비스 10개
+const p99 = percentile(totals, 0.99);
+</code></pre>
+<h3>결과: 평균은 천천히, 꼬리는 빠르게 늘어난다</h3>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>거친 서비스 수</th>
+<th>평균 (ms)</th>
+<th>p50 (ms)</th>
+<th>p99 (ms)</th>
+<th>느린 호출을 만난 요청</th>
+<th>이론값 1 - 0.99^N</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>11.9</td>
+<td>10.0</td>
+<td>17.5</td>
+<td>0.99%</td>
+<td>1.00%</td>
+</tr>
+<tr>
+<td>3</td>
+<td>35.9</td>
+<td>30.1</td>
+<td>221.3</td>
+<td>3.06%</td>
+<td>2.97%</td>
+</tr>
+<tr>
+<td>5</td>
+<td>59.7</td>
+<td>50.3</td>
+<td>243.6</td>
+<td>4.98%</td>
+<td>4.90%</td>
+</tr>
+<tr>
+<td>10</td>
+<td>119.1</td>
+<td>100.9</td>
+<td>299.2</td>
+<td>9.59%</td>
+<td>9.56%</td>
+</tr>
+<tr>
+<td>20</td>
+<td>238.1</td>
+<td>202.5</td>
+<td>578.8</td>
+<td>18.23%</td>
+<td>18.21%</td>
+</tr>
+</tbody>
+</table></div>
+<p>서비스 1개일 때는 느린 호출 비율이 1%에 조금 못 미쳐(0.99%) p99가 아직 빠른 쪽(17.5ms)에 걸린다. 3개만 거쳐도 느린 호출을 만난 요청이 약 3%로 늘어 p99가 221ms로 뛴다. 평균은 서비스 수에 비례해 완만하게 늘 뿐이라, 평균 대시보드만 보면 이 변화를 놓친다. 느린 호출을 만난 비율은 이론값 1 - 0.99^N과 거의 같았다.</p>
+<p>같은 계산은 큰 시스템에서 더 극적이다. Jeffrey Dean과 Luiz André Barroso는 2013년 Communications of the ACM 논문 <a href="https://research.google/pubs/the-tail-at-scale/">「The Tail at Scale」</a>에서, 서버 하나가 100번 중 1번 1초 이상 걸릴 때 요청 하나가 서버 100대의 응답을 모아야 한다면 사용자 요청의 63%가 1초를 넘긴다는 예를 든다. 논문은 서버 100대에 병렬로 퍼뜨리는 구조이고 내 시뮬레이션은 서비스를 순서대로 거치는 구조라 모양은 다르지만, 1 - 0.99^100이 약 63%이듯 느린 호출을 한 번이라도 만날 확률이 쌓인다는 원리는 같다.</p>
+<h3>재시도를 더하면</h3>
+<p>수업이 연습 문제로 낸 재시도 로직도 붙여 봤다. 호출이 50ms 안에 끝나지 않으면 끊고 한 번 더 부른다. 같은 시드로 돌린 결과를 재시도 전과 나란히 놓으면 아래와 같다.</p>
+<figure class="blog-chart">
+<svg viewbox="0 0 560 380" role="img">
+  
+  <title id="chart-1-p99-title">거친 서비스 수별 p99 지연 (ms)</title>
+  <text x="280.0" y="29" text-anchor="middle" font-size="18" fill="currentColor">거친 서비스 수별 p99 지연 (ms)</text>
+  <text x="280.0" y="48.0" text-anchor="middle" font-size="12" fill="var(--chart-muted, currentColor)"><tspan x="280.0" dy="0">서비스당 1% 확률로 200ms, 요청 10만 건</tspan></text>
+  <line x1="72" y1="277.0" x2="492" y2="277.0" stroke="#94a3b8" stroke-width="0.5"></line>
+<line x1="72" y1="230.8" x2="492" y2="230.8" stroke="#94a3b8" stroke-width="0.5"></line>
+<line x1="72" y1="184.5" x2="492" y2="184.5" stroke="#94a3b8" stroke-width="0.5"></line>
+<line x1="72" y1="138.2" x2="492" y2="138.2" stroke="#94a3b8" stroke-width="0.5"></line>
+<line x1="72" y1="92.0" x2="492" y2="92.0" stroke="#94a3b8" stroke-width="0.5"></line>
+<rect x="72" y="62" width="10" height="10" fill="#f97316"></rect>
+<text x="87" y="71" font-size="11" fill="currentColor">재시도 없음</text>
+<rect x="177" y="62" width="10" height="10" fill="#38bdf8"></rect>
+<text x="192" y="71" font-size="11" fill="currentColor">50ms 후 1회 재시도</text>
+<rect x="96.0" y="271.4" width="16.0" height="5.6" fill="#f97316"></rect>
+<rect x="114.0" y="271.4" width="16.0" height="5.6" fill="#38bdf8"></rect>
+<text x="114.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor"><tspan x="114.0" dy="0">1개</tspan></text>
+<rect x="180.0" y="206.3" width="16.0" height="70.7" fill="#f97316"></rect>
+<rect x="198.0" y="250.9" width="16.0" height="26.1" fill="#38bdf8"></rect>
+<text x="198.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor"><tspan x="198.0" dy="0">3개</tspan></text>
+<rect x="264.0" y="199.1" width="16.0" height="77.9" fill="#f97316"></rect>
+<rect x="282.0" y="243.7" width="16.0" height="33.3" fill="#38bdf8"></rect>
+<text x="282.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor"><tspan x="282.0" dy="0">5개</tspan></text>
+<rect x="348.0" y="181.4" width="16.0" height="95.6" fill="#f97316"></rect>
+<rect x="366.0" y="225.8" width="16.0" height="51.2" fill="#38bdf8"></rect>
+<text x="366.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor"><tspan x="366.0" dy="0">10개</tspan></text>
+<rect x="432.0" y="92.0" width="16.0" height="185.0" fill="#f97316"></rect>
+<rect x="450.0" y="180.4" width="16.0" height="96.6" fill="#38bdf8"></rect>
+<text x="104.0" y="267.4" font-size="9" text-anchor="middle" fill="currentColor">18</text>
+<text x="122.0" y="267.4" font-size="9" text-anchor="middle" fill="currentColor">18</text>
+<text x="188.0" y="202.3" font-size="9" text-anchor="middle" fill="currentColor">221</text>
+<text x="206.0" y="246.9" font-size="9" text-anchor="middle" fill="currentColor">82</text>
+<text x="272.0" y="195.1" font-size="9" text-anchor="middle" fill="currentColor">244</text>
+<text x="290.0" y="239.7" font-size="9" text-anchor="middle" fill="currentColor">104</text>
+<text x="356.0" y="177.4" font-size="9" text-anchor="middle" fill="currentColor">299</text>
+<text x="374.0" y="221.8" font-size="9" text-anchor="middle" fill="currentColor">160</text>
+<text x="440.0" y="88.0" font-size="9" text-anchor="middle" fill="currentColor">579</text>
+<text x="458.0" y="176.4" font-size="9" text-anchor="middle" fill="currentColor">302</text>
+<text x="450.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor"><tspan x="450.0" dy="0">20개</tspan></text>
+  <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: tailLatency.ts 시뮬레이션, 2026-11-25</text>
+</svg>
+<figcaption>출처: tailLatency.ts 시뮬레이션, 2026-11-25. 막대 위 숫자는 p99(ms)를 반올림한 값이다.</figcaption>
+</figure>
+
+<p>재시도 로직은 호출 함수를 감싸는 몇 줄이다.</p>
+<pre><code class="language-ts">// [걸린 시간, 호출 횟수]를 돌려준다
+function callWithRetry(timeout = 50): [number, number] {
+  const first = call();
+  if (first &lt;= timeout) return [first, 1];
+  return [timeout + call(), 2]; // 기다린 시간 + 재시도 시간
+}
+</code></pre>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>거친 서비스 수</th>
+<th>p99 재시도 없음 (ms)</th>
+<th>p99 재시도 (ms)</th>
+<th>요청당 호출 수 (재시도)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>17.5</td>
+<td>17.6</td>
+<td>1.010</td>
+</tr>
+<tr>
+<td>3</td>
+<td>221.3</td>
+<td>81.8</td>
+<td>3.031</td>
+</tr>
+<tr>
+<td>5</td>
+<td>243.6</td>
+<td>104.3</td>
+<td>5.051</td>
+</tr>
+<tr>
+<td>10</td>
+<td>299.2</td>
+<td>160.3</td>
+<td>10.100</td>
+</tr>
+<tr>
+<td>20</td>
+<td>578.8</td>
+<td>302.2</td>
+<td>20.200</td>
+</tr>
+</tbody>
+</table></div>
+<p>재시도로 서비스 10개 기준 p99가 299.2ms에서 160.3ms로, 20개 기준 578.8ms에서 302.2ms로 줄었다. 대신 요청당 호출 수가 약 1% 늘었다. 느린 서버가 과부하 때문에 느린 상황이라면 이 추가 호출이 부하를 더 키울 수 있다. 「The Tail at Scale」의 hedged request가 첫 요청이 예상 지연의 95번째 백분위수를 넘길 때까지 기다렸다가 보조 요청을 보내, 추가 부하를 약 5%로 묶는 이유도 여기에 있다고 이해했다.</p>
+<h2>전부 나누지 말고 필요한 곳만 떼어 낸다</h2>
+<p>수업의 마지막 사례는 실전적이었다. 서점 전체를 마이크로서비스로 바꾸는 대신, 시리즈 1편의 모듈러 모놀리스에서 연말에 트래픽이 몰리는 주문 도메인만 분리해 따로 확장한다. 모듈 경계가 이미 공개 함수로 정리돼 있다면, 그 함수 호출을 네트워크 호출로 바꾸는 범위가 주문 하나로 줄어든다.</p>
+<p>이때 판단 기준으로 나온 개념이 아키텍처 퀀텀이다. 리처즈와 포드의 정의로 퀀텀은 독립적으로 배포되고, 기능 응집도가 높고, 동기식으로 결합된 최소 단위이며, 확장성, 가용성 같은 특성을 독립적으로 가질 수 있다. 주문을 떼어 냈어도 주문이 결제를 동기로 부르고 DB를 공유한다면, 둘은 여전히 함께 움직이는 한 덩어리다. 어디까지 함께 묶고 어디서 끊을지는 다음 편에서 퀀텀을 직접 세어 보며 다룬다.</p>
+<p>마틴 파울러의 <a href="https://martinfowler.com/bliki/MonolithFirst.html">MonolithFirst</a>도 같은 방향을 말한다. 경계를 충분히 이해하기 전에 처음부터 서비스로 나누기보다, 모놀리스에서 시작해 필요한 경계를 찾아 떼어 내는 편이 안전하다는 것이다.</p>
+<h2>자주 묻는 질문</h2>
+<h3>평균 지연 대신 p99를 봐야 하는 이유는 뭔가요?</h3>
+<p>평균은 소수의 느린 요청을 다수의 빠른 요청 속에 묻어 버린다. 위 시뮬레이션에서 서비스 3개일 때 평균은 35.9ms였지만 p99는 221.3ms였다. 요청 100건 중 1건이 평균의 6배 넘게 느린 셈이고, 사용자 한 명이 페이지 하나를 보며 요청을 여러 건 보내므로 그 1%를 한 번이라도 만나는 사용자 비율은 1%보다 높아진다.</p>
+<h3>이벤트 드리븐으로 바꾸면 꼬리 지연이 사라지나요?</h3>
+<p>사용자가 기다리는 경로에서 비동기로 뺀 호출은 응답 시간에서 빠진다. 다만 지연이 사라지는 건 아니고 뒤로 밀린다. 이벤트 처리가 늦어지면 알림이나 재고 반영이 늦어지고, 순서가 뒤바뀌거나 중복 처리되는 문제를 따로 다뤄야 한다.</p>
+<h3>서비스 기반과 마이크로서비스 중 무엇부터 시작해야 하나요?</h3>
+<p>드라이빙 특성이 독립 배포와 부분 확장이 아니라면 서비스 기반이 부담이 적다. 데이터베이스를 공유하니 트랜잭션과 조회가 단순하다. 특정 도메인만 독립적으로 확장해야 하는 이유가 생기면 그 도메인부터 DB를 분리해 마이크로서비스로 옮기는 식으로 나아갈 수 있다.</p>
+<h2>정리: 분산의 범위는 품질 요구사항으로 정한다</h2>
+<p>분산 아키텍처는 확장과 독립성을 주지만, 모든 호출을 실패하고 느려질 수 있는 네트워크 위에 올린다. 다섯 가지 스타일은 이 비용을 각자 다르게 나눠 진다. 그래서 스타일을 고를 때는 드라이빙 특성을 먼저 정하고, 그 특성을 얻으려고 감당할 복잡도가 어디까지인지 따져야 한다. 꼬리 지연 시뮬레이션은 그 복잡도가 숫자로 어떻게 드러나는지 보여 줬다. 서비스 하나하나가 빨라도 거치는 단계가 늘면 p99가 빠르게 나빠진다.</p>
+<p>결국 분산 자체가 목적이 아니다. 시스템의 품질 요구사항과 감당할 수 있는 복잡도에 맞춰 나눌 범위를 정하는 게 핵심이다. 다음 편에서는 그 범위를 정하는 도구인 아키텍처 퀀텀과 서비스 입도를 유니온 파인드로 직접 계산해 본다.</p>
+<hr>
+<p><strong>글쓴이 HanSungLin</strong> · TypeScript·Node.js 백엔드 개발자입니다. 여러 오픈마켓과 상품·주문을 연동하는 서비스를 운영하며, 레이어드 구조의 웹 서버와 큐 기반 워커로 이뤄진 시스템을 다룹니다. 실무에서 마주친 설계 문제를 이해하려고 소프트웨어 아키텍처를 공부하며 기록합니다. 이 글은 온라인 강의를 들으며 정리한 노트이고, 시뮬레이션 수치는 직접 실행한 결과입니다.</p><!--bs-body:end-->
+<footer class="post-footer"><span>Published at <a href="https://sungrinhan.github.io" data-bs-generated="1">sungrinhan.github.io</a></span><span>2026-11-25 &middot; HanSungLin</span></footer>
+</article>
+</body>
+</html>

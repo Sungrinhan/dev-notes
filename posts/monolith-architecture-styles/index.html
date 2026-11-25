@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d9488" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+<title>레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기</title>
+<meta name="description" content="온라인 서점에 쿠폰 할인을 추가하는 예제로 레이어드, 모듈러 모놀리스, 마이크로커널의 분할 기준과 변경 범위, 트레이드오프를 비교한 학습 노트입니다.">
+<link rel="canonical" href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">
+<meta name="author" content="HanSungLin">
+<meta name="blog-source-sha256" content="c0e07cd43c6835a597a6b87962c18c96299276e46ab1b1b4cd06cba644f5979f">
+<meta name="blog-body-sha256" content="78c8e5b90e42fd9dd378659d1dadbe5cc8b68bb4f98476ac96b87555a259c6e2">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:title" content="레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기">
+<meta property="og:description" content="온라인 서점에 쿠폰 할인을 추가하는 예제로 레이어드, 모듈러 모놀리스, 마이크로커널의 분할 기준과 변경 범위, 트레이드오프를 비교한 학습 노트입니다.">
+<meta property="og:url" content="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">
+<meta property="og:image" content="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/hero.webp">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="쿠폰 하나로 비교한 모놀리식 세 가지 구조: 레이어드는 3곳, 모듈러 모놀리스는 2곳, 마이크로커널은 1곳을 고친다는 도식">
+<meta property="og:site_name" content="sungrinhan.github.io">
+<meta property="article:published_time" content="2026-11-25">
+<meta property="article:author" content="HanSungLin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기">
+<meta name="twitter:description" content="온라인 서점에 쿠폰 할인을 추가하는 예제로 레이어드, 모듈러 모놀리스, 마이크로커널의 분할 기준과 변경 범위, 트레이드오프를 비교한 학습 노트입니다.">
+<meta name="twitter:image" content="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/hero.webp">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기", "description": "온라인 서점에 쿠폰 할인을 추가하는 예제로 레이어드, 모듈러 모놀리스, 마이크로커널의 분할 기준과 변경 범위, 트레이드오프를 비교한 학습 노트입니다.", "image": "https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/hero.webp", "datePublished": "2026-11-25", "dateModified": "2026-11-25", "author": {"@type": "Person", "name": "HanSungLin"}, "wordCount": 1581, "keywords": "소프트웨어 아키텍처, 모놀리식, 레이어드 아키텍처, 모듈러 모놀리스, 마이크로커널", "inLanguage": "ko", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/"}}</script>
+<style>
+:root{--bg:#fafaf9;--surface:#fff;--text:#1c1917;--muted:#57534e;--soft:#78716c;--accent:#0f766e;--accent-soft:#ccfbf1;--accent-deep:#115e59;--border:#e7e5e4;--code-bg:#f5f5f4;--warn:#b91c1c;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04)}
+@media (prefers-color-scheme:dark){:root{--bg:#18181b;--surface:#27272a;--text:#fafafa;--muted:#a1a1aa;--soft:#92929c;--accent:#2dd4bf;--accent-soft:#134e4a;--accent-deep:#99f6e4;--border:#3f3f46;--code-bg:#1f1f23;--warn:#fca5a5;--shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3)}}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.65;margin:0;font-size:17px;-webkit-font-smoothing:antialiased}
+article{max-width:740px;margin:0 auto;padding:3rem 1.5rem 5rem}
+.kicker{font-family:ui-monospace,"SF Mono",Monaco,monospace;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 .85rem;font-weight:600}
+h1{font-size:clamp(2rem,5vw,2.85rem);line-height:1.12;letter-spacing:-.025em;margin:0 0 1.1rem;font-weight:800}
+.dek{color:var(--muted);font-size:clamp(1.05rem,2.5vw,1.2rem);line-height:1.5;margin:0 0 1.75rem;max-width:60ch}
+.byline{color:var(--soft);font-size:.875rem;font-family:ui-monospace,monospace;margin:0 0 2.5rem}
+.updated{color:var(--soft);font-size:.875rem;font-family:ui-monospace,monospace;margin:0 0 2.5rem}
+.byline + .updated{margin-top:-2rem}
+.byline strong{color:var(--text);font-weight:600}
+.hero{margin:0 0 2.5rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.hero img{display:block;width:100%;height:auto;aspect-ratio:1200/630;object-fit:cover}
+h2{font-size:clamp(1.4rem,3vw,1.75rem);line-height:1.22;letter-spacing:-.015em;margin:3rem 0 1rem;font-weight:700;scroll-margin-top:1rem}
+h3{font-size:1.2rem;margin:2rem 0 .75rem;font-weight:700}
+p{margin:0 0 1.25rem}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:var(--accent-deep)}
+code{font-family:ui-monospace,"SF Mono",Monaco,monospace;font-size:.9em;background:var(--code-bg);border:1px solid var(--border);padding:.1em .4em;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;font-size:.875rem}
+pre code{background:none;border:none;padding:0}
+blockquote{border-left:3px solid var(--accent);padding:.4rem 0 .4rem 1.25rem;margin:0 0 1.5rem;color:var(--muted)}
+ul,ol{margin:0 0 1.25rem;padding-left:1.5rem}
+li{margin:.35rem 0}
+strong{font-weight:700;color:var(--text)}
+img{max-width:100%;height:auto}
+svg{max-width:100%;height:auto}
+figure{margin:0 0 1.75rem}
+figure svg{display:block;margin:0 auto}
+figcaption{color:var(--muted);font-size:.875rem;margin-top:.5rem}
+.table-wrap{max-width:100%;overflow-x:auto;margin:0 0 1.5rem;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}
+th{background:var(--code-bg);font-weight:700}
+.post-footer{margin-top:4rem;padding-top:2rem;border-top:1px solid var(--border);font-size:.875rem;color:var(--muted);font-family:ui-monospace,monospace;display:flex;flex-wrap:wrap;gap:.6rem 1.5rem;justify-content:space-between}
+.post-footer a{color:var(--accent);text-decoration:none}
+::selection{background:var(--accent);color:var(--bg)}
+@media print{body{background:#fff;color:#000;font-size:11pt}article{max-width:none;padding:0 1rem}.hero{box-shadow:none}.table-wrap{overflow:visible}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<article>
+<header>
+<p class="kicker">아키텍처 스타일 시리즈 1편</p>
+<h1>레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기</h1>
+<p class="dek">온라인 서점에 쿠폰 할인을 추가하는 예제로 레이어드, 모듈러 모놀리스, 마이크로커널의 분할 기준과 변경 범위, 트레이드오프를 비교한 학습 노트입니다.</p>
+<p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 7 min read &middot; 1581 words</p>
+</header>
+<figure class="hero"><img src="hero.webp" alt="쿠폰 하나로 비교한 모놀리식 세 가지 구조: 레이어드는 3곳, 모듈러 모놀리스는 2곳, 마이크로커널은 1곳을 고친다는 도식" width="1200" height="630"></figure>
+<!--bs-body:start--><p>같은 기능을 만들어도 코드를 어떤 기준으로 나눴느냐에 따라 고칠 파일 수가 달라진다. 수강 중인 온라인 소프트웨어 아키텍처 강의에서 이번 수업은 작은 온라인 서점에 쿠폰 할인을 붙이는 예제 하나로 레이어드, 모듈러 모놀리스, 마이크로커널을 비교했다. 강의 예제 기준으로 쿠폰을 넣을 때 레이어드는 3개 파일, 모듈러 모놀리스는 2곳(새 쿠폰 모듈과 주문 모듈의 호출부), 마이크로커널은 플러그인 파일 1개를 고쳤다. 이 글은 그 숫자가 왜 그렇게 나오는지, 그리고 숫자가 작다고 늘 좋은 건 아니라는 점을 정리한 학습 노트다.</p>
+<blockquote>
+<p><strong>핵심 요약</strong></p>
+<ul>
+<li>아키텍처 스타일은 시스템을 큰 덩어리로 나누는 방식에 붙인 이름이다. 먼저 배포 단위가 하나인지(모놀리식) 여럿인지(분산)를 보고, 그다음 코드를 기술 역할로 나눌지 업무 영역으로 나눌지를 본다.</li>
+<li>레이어드는 기술 역할별로 층을 쌓는다. 닫힌 층은 결합도를 낮추지만, 로직 없이 층을 통과하기만 하는 아키텍처 싱크홀을 만들 수 있다.</li>
+<li>모듈러 모놀리스는 카탈로그, 주문, 쿠폰처럼 도메인별로 모듈을 나누고 공개 함수로만 소통한다. 한 프로세스 안이라 경계가 쉽게 무너지므로 규율이 필요하다.</li>
+<li>마이크로커널은 최소한의 코어에 플러그인을 끼운다. 규칙이 자주 바뀌는 기능에 강하지만, 코어와 플러그인 사이의 약속이 바뀌면 플러그인을 한꺼번에 고쳐야 한다.</li>
+<li>정답 스타일은 없다. 무엇이 자주 바뀌는지, 팀이 어떻게 나뉘는지, 기능을 탈부착해야 하는지를 보고 고르며, 섞어 쓸 수도 있다.</li>
+</ul>
+</blockquote>
+<h2>아키텍처 스타일은 무엇을 기준으로 나누나</h2>
+<p>아키텍처 스타일은 시스템을 큰 덩어리로 나누는 방식에 붙인 이름이다. 마크 리처즈와 닐 포드의 <a href="https://www.oreilly.com/library/view/fundamentals-of-software/9781492043447/">『소프트웨어 아키텍처 101』(Fundamentals of Software Architecture, O'Reilly)</a>은 스타일을 두 축으로 나눈다. 첫째 축은 배포 단위다. 애플리케이션 전체를 하나로 배포하면 모놀리식이고, 여러 조각을 따로 배포해 네트워크로 연결하면 분산이다. 둘째 축은 모놀리식 안에서 코드를 자르는 기준이다.</p>
+<ul>
+<li><strong>기술 분할</strong>: 화면, 비즈니스 로직, 데이터 접근처럼 기술 역할로 자른다. 레이어드가 대표적이다.</li>
+<li><strong>도메인 분할</strong>: 카탈로그, 주문, 쿠폰처럼 업무 영역으로 자른다. 모듈러 모놀리스가 대표적이다.</li>
+</ul>
+<p>수업에서는 이걸 건물에 비유했다. 같은 건물도 층으로 나눌 수 있고 칸으로 나눌 수도 있다. 소프트웨어도 같은 기능을 어느 방향으로 자르느냐에 따라 모양이 달라진다. 이번 글의 세 스타일은 모두 배포 단위가 하나인 모놀리식이고, 차이는 자르는 방향에 있다.</p>
+<h2>레이어드 아키텍처: 기술 역할로 층을 쌓는다</h2>
+<p>레이어드 아키텍처는 프레젠테이션, 비즈니스, 퍼시스턴스, 데이터베이스처럼 기술 역할별로 층을 쌓는 스타일이다. 요청은 위에서 아래로 흐른다. 화면이 요청을 받으면 비즈니스 층이 규칙을 적용하고, 퍼시스턴스 층이 데이터베이스를 읽고 쓴다. 마틴 파울러도 <a href="https://martinfowler.com/bliki/PresentationDomainDataLayering.html">프레젠테이션, 도메인, 데이터 층으로 나누는 방식</a>을 가장 흔한 모듈화 방법 중 하나로 소개한다.</p>
+<p>서점의 주문 흐름을 레이어드로 쓰면 대략 이렇다.</p>
+<pre><code class="language-ts">// presentation/orderController.ts
+export function placeOrder(req: OrderRequest) {
+  return orderService.placeOrder(req.userId, req.bookId);
+}
+
+// business/orderService.ts
+export function placeOrder(userId: string, bookId: string) {
+  const book = bookRepository.find(bookId);
+  const total = book.price;
+  return orderRepository.save(userId, bookId, total);
+}
+
+// persistence/orderRepository.ts
+export function save(userId: string, bookId: string, total: number) {
+  return db.execute(&quot;INSERT INTO orders ...&quot;, [userId, bookId, total]);
+}
+</code></pre>
+<h3>닫힌 층과 열린 층</h3>
+<p>각 층이 바로 아래 층만 호출하도록 막은 층을 닫힌 층이라고 한다. 닫힌 층은 결합도를 낮춘다. 퍼시스턴스 층의 구현을 바꿔도 프레젠테이션 층은 영향을 받지 않는다. 화면 코드가 SQL을 직접 알지 못하기 때문이다.</p>
+<p>반대로 층을 건너뛰어 아래 층을 바로 부를 수 있게 열어 둔 층을 열린 층이라고 한다. 리처즈와 포드는 공용 유틸리티를 모아 둔 서비스 층처럼, 꼭 거칠 필요가 없는 층을 열린 층으로 두는 예를 든다.</p>
+<h3>아키텍처 싱크홀</h3>
+<p>닫힌 층의 대가가 아키텍처 싱크홀이다. 싱크홀은 요청이 아무 로직 없이 층을 그냥 통과하기만 하는 현상을 말한다. 예를 들어 책 상세 조회는 비즈니스 규칙이 하나도 없다.</p>
+<pre><code class="language-ts">// business/bookService.ts
+export function getBook(bookId: string) {
+  return bookRepository.find(bookId); // 아래 층에 그대로 넘기기만 한다
+}
+</code></pre>
+<p>리처즈의 <a href="https://www.oreilly.com/library/view/software-architecture-patterns/9781491971437/">『Software Architecture Patterns』(O'Reilly)</a>는 이런 통과 요청이 어느 정도 있는 건 자연스럽고, 대부분의 요청이 통과만 한다면 레이어드가 맞지 않는 신호로 보라고 한다. 그때 쓸 수 있는 대응이 층을 여는 것이다. 화면이 퍼시스턴스를 바로 부르게 하면 싱크홀은 줄지만, 화면이 데이터 접근 코드를 알게 되어 결합도가 높아진다. 수업에서 강조한 점은 이 둘이 맞바꾸는 관계라는 것이다. 싱크홀을 없애면 결합이 늘고, 결합을 막으면 싱크홀이 남는다.</p>
+<h2>모듈러 모놀리스: 업무 영역으로 칸을 나눈다</h2>
+<p>모듈러 모놀리스는 배포 단위는 하나로 두고, 코드를 카탈로그, 주문, 쿠폰처럼 업무 영역별 모듈로 나누는 스타일이다. 각 모듈 안에는 다시 작은 기술 층을 둘 수 있다. 큰 건물을 층 대신 칸으로 나누고, 칸마다 작은 계단을 둔 모양이다.</p>
+<p>핵심 규칙은 하나다. 모듈끼리는 내부 코드와 데이터를 숨기고 공개 함수로만 소통한다.</p>
+<pre><code class="language-ts">// modules/coupon/index.ts  (쿠폰 모듈이 밖으로 내놓는 유일한 입구)
+import { couponRepository } from &quot;./repository&quot;; // 모듈 안에서만 쓰고 export 하지 않는다
+import { applyCoupon } from &quot;./rules&quot;;
+
+export function discountedPrice(code: string | undefined, price: number): number {
+  const coupon = code ? couponRepository.find(code) : undefined;
+  return coupon ? applyCoupon(coupon, price) : price;
+}
+
+// modules/order/service.ts
+import * as catalog from &quot;../catalog&quot;;
+import * as coupon from &quot;../coupon&quot;;
+import { orderRepository } from &quot;./repository&quot;;
+
+export function placeOrder(userId: string, bookId: string, couponCode?: string) {
+  const book = catalog.getBook(bookId);
+  const total = coupon.discountedPrice(couponCode, book.price);
+  return orderRepository.save(userId, bookId, total);
+}
+</code></pre>
+<p>주문 모듈은 쿠폰 모듈의 <code>index.ts</code>가 내보낸 함수만 쓰고, <code>couponRepository</code>나 쿠폰 테이블을 직접 건드리지 않는다. 쿠폰 규칙이 바뀌어도 변경은 쿠폰 모듈 안에 모인다.</p>
+<h3>경계는 저절로 지켜지지 않는다</h3>
+<p>모듈러 모놀리스의 약점은 경계가 코드 규율에만 기대고 있다는 점이다. 한 프로세스 안에서는 <code>import { couponRepository } from "../coupon/repository"</code>처럼 다른 모듈의 내부 파일을 바로 import 하는 데 아무 장벽이 없다. ESLint의 import 제한 규칙 같은 도구로 막지 않는 한 그렇다. 마감에 쫓기면 누군가 쿠폰 테이블을 주문 쿼리에서 바로 조인하고, 그 순간 경계가 무너진다.</p>
+<p>실제 사례가 Shopify다. Shopify 엔지니어링 블로그의 2019년 글 <a href="https://shopify.engineering/deconstructing-monolith-designing-software-maximizes-developer-productivity">「Deconstructing the Monolith」</a>에서 Kirsten Westeinde는 배포 단위를 늘리지 않고 모듈성을 높이려고 모놀리스를 주문, 배송, 재고, 결제 같은 실제 업무 개념 기준의 컴포넌트로 재편했다고 설명한다. 그리고 컴포넌트 사이의 비공개 코드 호출과 데이터 결합을 추적하는 사내 도구 Wedge를 따로 만들었다. 경계를 지키려면 사람의 다짐보다 도구가 필요하다는 뜻으로 읽었다.</p>
+<h2>마이크로커널: 코어에 플러그인을 끼운다</h2>
+<p>마이크로커널은 최소한의 코어에 플러그인을 끼우거나 빼며 기능을 확장하는 스타일이다. 플러그인 아키텍처라고도 부른다. 운영체제의 <a href="https://en.wikipedia.org/wiki/Microkernel">마이크로커널</a>에서 이름을 따왔고, 애플리케이션 수준에서는 IDE나 브라우저의 확장 기능 구조를 떠올리면 된다.</p>
+<p>수업의 구현은 레지스트리 방식이었다. 플러그인이 스스로 레지스트리에 등록하고, 코어는 레지스트리만 돌 뿐 어떤 플러그인이 있는지 모른다.</p>
+<pre><code class="language-ts">// core/pricing.ts  (코어: 플러그인의 존재를 모른다)
+export type PriceRule = (order: Order, price: number) =&gt; number;
+
+const rules: PriceRule[] = [];
+
+export function register(rule: PriceRule): void {
+  rules.push(rule);
+}
+
+export function finalPrice(order: Order): number {
+  return rules.reduce((price, rule) =&gt; rule(order, price), order.basePrice);
+}
+
+// plugins/couponDiscount.ts  (쿠폰 기능은 이 파일 하나)
+import { register } from &quot;../core/pricing&quot;;
+
+register((order, price) =&gt;
+  order.couponCode === &quot;WELCOME10&quot; ? Math.floor(price * 0.9) : price,
+);
+</code></pre>
+<p>예제는 짧게 보이려고 쿠폰 코드를 플러그인 안에 박아 두었지만, 실제로는 플러그인 안에서 쿠폰 저장소를 읽어도 수정 파일은 여전히 플러그인 하나다. 쿠폰을 끄고 싶으면 플러그인 파일을 빼면 된다. 코어가 시작할 때 <code>plugins/</code> 폴더의 모듈을 모두 불러오는 로더가 있다는 전제다. 로더가 플러그인 파일을 import 하는 순간 파일 맨 위의 <code>register(...)</code> 호출이 실행되어 레지스트리에 규칙이 등록된다. 고객사나 상품마다 할인 규칙이 다른 서비스라면 규칙마다 플러그인을 하나씩 두는 식으로 다르게 적용하기 좋다.</p>
+<p>대가는 코어와 플러그인 사이의 약속, 즉 <code>PriceRule</code>이라는 함수 타입 <code>(order, price) =&gt; number</code>에 있다. 예를 들어 해외 판매를 시작하면서 가격을 숫자 대신 금액과 통화를 담은 <code>Money</code> 객체로 바꾸면, <code>price * 0.9</code>처럼 가격을 숫자로 계산하던 모든 플러그인을 함께 고쳐야 한다. TypeScript라면 타입이 맞지 않게 된 플러그인을 컴파일러가 짚어 주지만, 고치는 일 자체는 줄지 않는다. 플러그인이 많을수록 약속을 바꾸기가 어려워진다.</p>
+<p>반대로 모든 변경이 플러그인을 깨뜨리는 건 아니다. TypeScript는 인자가 더 적은 함수를 인자가 더 많은 함수 타입에 그대로 넣을 수 있게 해 준다. 그래서 <code>PriceRule</code> 맨 뒤에 회원 등급 같은 인자를 하나 더하는 변경은 기존 플러그인을 고치지 않아도 컴파일되고, 코어의 호출부만 바꾸면 된다. 약속을 바꿀 때는 뒤에 덧붙이는 변경인지, 기존 인자의 모양이나 의미를 바꾸는 변경인지부터 구분해야 한다.</p>
+<h2>쿠폰 하나로 비교한 세 스타일의 변경 범위</h2>
+<p>같은 쿠폰 할인 기능을 세 스타일에 넣었을 때 고친 곳은 다음 표와 같다. 수업 예제 코드 기준이고, 세는 범위가 스타일마다 조금 달라서 먼저 기준을 밝혀 둔다.</p>
+<ul>
+<li><strong>레이어드</strong>: 쿠폰 코드를 받는 화면 파일까지 센다.</li>
+<li><strong>모듈러 모놀리스, 마이크로커널</strong>: 주문 요청에 쿠폰 코드가 이미 실려 온다고 보고 화면 쪽 수정은 세지 않는다. 쿠폰 모듈은 안에서 파일이 몇 개로 나뉘어도 새 폴더 하나로 센다. 마이크로커널은 <code>plugins/</code> 폴더를 읽는 로더가 코어에 이미 있다고 본다.</li>
+<li><strong>화면 파일까지 똑같이 세면</strong>: 레이어드 3, 모듈러 모놀리스 3, 마이크로커널 2가 된다. 차이는 줄지만, 쿠폰 규칙이 한곳에 모이느냐 여러 층에 흩어지느냐의 차이는 그대로 남는다.</li>
+</ul>
+<p>실제 프로젝트라면 여기에 테스트와 설정 파일이 더해진다.</p>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>스타일</th>
+<th>분할 기준</th>
+<th>쿠폰 추가 시 수정 파일</th>
+<th>변경이 모이는 곳</th>
+<th>주된 대가</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>레이어드</td>
+<td>기술 역할</td>
+<td>3개 (화면, 서비스, 저장소)</td>
+<td>여러 층에 흩어짐</td>
+<td>싱크홀, 기능 하나가 모든 층을 지나감</td>
+</tr>
+<tr>
+<td>모듈러 모놀리스</td>
+<td>업무 영역</td>
+<td>2곳 (새 쿠폰 모듈, 주문 모듈의 호출부)</td>
+<td>쿠폰 도메인 안</td>
+<td>경계를 지키는 규율과 도구</td>
+</tr>
+<tr>
+<td>마이크로커널</td>
+<td>코어와 플러그인</td>
+<td>1개 (쿠폰 플러그인)</td>
+<td>플러그인 파일 하나</td>
+<td>코어와 플러그인 약속 변경 비용</td>
+</tr>
+</tbody>
+</table></div>
+<p>레이어드에서는 쿠폰 코드를 받을 화면, 할인을 계산할 서비스, 쿠폰을 읽을 저장소를 모두 고친다. 기능은 하나인데 층마다 한 조각씩 손대야 한다.</p>
+<pre><code class="language-ts">// presentation/orderController.ts: 쿠폰 코드를 받아 넘긴다
+return orderService.placeOrder(req.userId, req.bookId, req.couponCode);
+
+// business/orderService.ts: 할인을 계산한다
+const coupon = couponCode ? couponRepository.find(couponCode) : undefined;
+const total = coupon ? applyCoupon(coupon, book.price) : book.price;
+
+// persistence/couponRepository.ts: 쿠폰을 읽는다
+export function find(code: string) {
+  return db.queryOne(&quot;SELECT * FROM coupons WHERE code = ?&quot;, [code]);
+}
+</code></pre>
+<p>모듈러 모놀리스에서는 쿠폰 모듈을 새로 만들고 주문 모듈에서 공개 함수를 부르는 한 줄만 더한다. 마이크로커널에서는 플러그인 파일 하나를 추가하면 코어는 그대로다.</p>
+<h3>파일 수가 적다고 늘 이기는 건 아니다</h3>
+<p>표만 보면 마이크로커널이 가장 좋아 보이지만, 수업이 말한 결론은 반대 방향이었다. 파일 수는 "무엇이 바뀌는가"에 대한 답일 뿐이다. 바뀌는 대상이 달라지면 순위도 뒤집힌다.</p>
+<ul>
+<li><strong>모든 화면에 공통 로그를 남기는 변경</strong>이라면 레이어드가 유리하다. 프레젠테이션 층 한 곳만 보면 된다. 도메인별 모듈에서는 모듈마다 손대야 한다.</li>
+<li><strong>가격의 모양을 바꾸는 변경</strong>(숫자에서 <code>Money</code> 객체로)이라면 마이크로커널이 가장 비싸다. 모든 플러그인을 고쳐야 한다.</li>
+<li><strong>쿠폰 팀과 주문 팀이 따로 있는 조직</strong>이라면 모듈러 모놀리스가 팀 경계와 코드 경계를 맞춰 준다.</li>
+</ul>
+<h2>어떤 스타일을 고를까</h2>
+<p>스타일을 고를 때 나는 수업에서 받은 세 가지 질문을 체크리스트로 쓰기로 했다.</p>
+<ol>
+<li><strong>무엇이 자주 바뀌나?</strong> 기술 기반(화면 프레임워크, DB)이 자주 바뀌면 레이어드, 업무 규칙이 도메인별로 바뀌면 모듈러 모놀리스가 맞다.</li>
+<li><strong>팀이 어떻게 나뉘나?</strong> 프론트엔드, 백엔드, DBA처럼 기술로 나뉜 팀은 레이어드와, 도메인별 팀은 모듈러 모놀리스와 잘 맞는다.</li>
+<li><strong>기능을 탈부착해야 하나?</strong> 고객사마다 켜고 끄는 기능, 자주 늘어나는 규칙이 있으면 마이크로커널을 고려한다.</li>
+</ol>
+<p>세 스타일은 섞어 쓸 수 있다. 서점 전체는 모듈러 모놀리스로 나누고, 할인 규칙이 계속 늘어나는 쿠폰 모듈 안에서만 마이크로커널을 쓰고, 각 모듈 내부는 작은 레이어드로 짜는 식이다. 실제로 이 조합이 수업 예제에서 가장 현실적이라고 느꼈다.</p>
+<p>아직 쪼갤 기준이 분명하지 않다면 하나의 모놀리스에서 시작하는 것도 방법이다. 마틴 파울러는 <a href="https://martinfowler.com/bliki/MonolithFirst.html">MonolithFirst</a>에서 도메인 경계를 충분히 이해하기 전에 처음부터 서비스로 나누면 경계를 잘못 긋기 쉽다고 지적한다. 모듈러 모놀리스는 경계를 미리 연습해 보는 자리로도 쓸 수 있다.</p>
+<h2>자주 묻는 질문</h2>
+<h3>모듈러 모놀리스와 마이크로서비스는 무엇이 다른가요?</h3>
+<p>모듈러 모놀리스는 도메인별로 나뉜 모듈을 하나의 단위로 배포하고, 모듈끼리는 같은 프로세스 안에서 함수로 호출한다. 마이크로서비스는 각 도메인을 따로 배포하고 네트워크로 호출한다. 그래서 마이크로서비스는 독립 배포와 확장이 쉬운 대신 네트워크 지연과 장애를 감당해야 한다. 분산 스타일은 시리즈 2편에서 다룬다.</p>
+<h3>아키텍처 싱크홀은 무조건 나쁜가요?</h3>
+<p>아니다. 단순 조회처럼 로직 없이 통과하는 요청은 어느 정도 생기기 마련이다. 문제는 대부분의 요청이 통과만 할 때다. 그 비율이 높다면 층을 일부 열거나, 레이어드가 이 시스템에 맞는 스타일인지 다시 볼 신호다.</p>
+<h3>마이크로커널의 플러그인 약속은 어떻게 덜 깨지게 하나요?</h3>
+<p>새 정보는 맨 뒤 인자나 <code>order</code> 같은 문맥 객체의 새 필드로 덧붙이면 기존 플러그인이 그대로 동작한다. 깨지는 건 기존 인자의 타입이나 의미를 바꿀 때다. 그래서 약속은 처음부터 작게 잡고, 바꿀 때는 기존 모양을 유지한 채 덧붙이는 방향을 먼저 찾는 편이 낫다.</p>
+<h2>정리</h2>
+<p>세 스타일은 같은 질문에 다르게 답한다. 레이어드는 기술 역할로, 모듈러 모놀리스는 업무 영역으로, 마이크로커널은 코어와 확장으로 시스템을 자른다. 쿠폰 예제에서 수정 파일이 3개, 2개, 1개로 줄었지만, 그건 쿠폰이라는 변경에 대한 답이다. 다른 변경을 놓으면 순위가 바뀐다. 그래서 아키텍처 스타일은 정답 하나를 고르는 일이 아니라 프로젝트의 품질 요구사항과 상황에 맞춰 트레이드오프를 고르는 일이다.</p>
+<p>다음 편에서는 배포 단위를 여러 개로 나누는 분산 아키텍처 다섯 가지와, 서비스를 여러 번 거칠수록 꼬리 지연이 커지는 이유를 TypeScript 시뮬레이션으로 확인한다.</p>
+<hr>
+<p><strong>글쓴이 HanSungLin</strong> · TypeScript·Node.js 백엔드 개발자입니다. 여러 오픈마켓과 상품·주문을 연동하는 서비스를 운영하며, 레이어드 구조의 웹 서버와 큐 기반 워커로 이뤄진 시스템을 다룹니다. 실무에서 마주친 설계 문제를 이해하려고 소프트웨어 아키텍처를 공부하며 기록합니다. 이 글은 온라인 강의를 들으며 정리한 노트이고, 개념의 원 출처는 본문에 링크한 책과 글입니다.</p><!--bs-body:end-->
+<footer class="post-footer"><span>Published at <a href="https://sungrinhan.github.io" data-bs-generated="1">sungrinhan.github.io</a></span><span>2026-11-25 &middot; HanSungLin</span></footer>
+</article>
+</body>
+</html>

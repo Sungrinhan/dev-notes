@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d9488" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+<title>아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기</title>
+<meta name="description" content="서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.">
+<link rel="canonical" href="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/">
+<meta name="author" content="HanSungLin">
+<meta name="blog-source-sha256" content="bd39f343dd2ca45b797f3ce655bd5d8e69b47b2cf466f66c206a8cd63933b0f8">
+<meta name="blog-body-sha256" content="506bd6021a3c6fd59fef4e21763308ec16536cfe8b8720cc535ba6ef039c441a">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:title" content="아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기">
+<meta property="og:description" content="서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.">
+<meta property="og:url" content="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/">
+<meta property="og:image" content="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/hero.webp">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="아키텍처 퀀텀 도식: 동기 호출과 공유 DB로 묶인 서비스 5개가 퀀텀 1, 비동기 메시지만 보내는 리뷰가 퀀텀 2">
+<meta property="og:site_name" content="sungrinhan.github.io">
+<meta property="article:published_time" content="2026-11-25">
+<meta property="article:author" content="HanSungLin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기">
+<meta name="twitter:description" content="서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.">
+<meta name="twitter:image" content="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/hero.webp">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기", "description": "서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.", "image": "https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/hero.webp", "datePublished": "2026-11-25", "dateModified": "2026-11-25", "author": {"@type": "Person", "name": "HanSungLin"}, "wordCount": 1548, "keywords": "소프트웨어 아키텍처, 아키텍처 퀀텀, 서비스 입도, 마이크로서비스, 유니온 파인드", "inLanguage": "ko", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/"}}</script>
+<style>
+:root{--bg:#fafaf9;--surface:#fff;--text:#1c1917;--muted:#57534e;--soft:#78716c;--accent:#0f766e;--accent-soft:#ccfbf1;--accent-deep:#115e59;--border:#e7e5e4;--code-bg:#f5f5f4;--warn:#b91c1c;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04)}
+@media (prefers-color-scheme:dark){:root{--bg:#18181b;--surface:#27272a;--text:#fafafa;--muted:#a1a1aa;--soft:#92929c;--accent:#2dd4bf;--accent-soft:#134e4a;--accent-deep:#99f6e4;--border:#3f3f46;--code-bg:#1f1f23;--warn:#fca5a5;--shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3)}}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.65;margin:0;font-size:17px;-webkit-font-smoothing:antialiased}
+article{max-width:740px;margin:0 auto;padding:3rem 1.5rem 5rem}
+.kicker{font-family:ui-monospace,"SF Mono",Monaco,monospace;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 .85rem;font-weight:600}
+h1{font-size:clamp(2rem,5vw,2.85rem);line-height:1.12;letter-spacing:-.025em;margin:0 0 1.1rem;font-weight:800}
+.dek{color:var(--muted);font-size:clamp(1.05rem,2.5vw,1.2rem);line-height:1.5;margin:0 0 1.75rem;max-width:60ch}
+.byline{color:var(--soft);font-size:.875rem;font-family:ui-monospace,monospace;margin:0 0 2.5rem}
+.updated{color:var(--soft);font-size:.875rem;font-family:ui-monospace,monospace;margin:0 0 2.5rem}
+.byline + .updated{margin-top:-2rem}
+.byline strong{color:var(--text);font-weight:600}
+.hero{margin:0 0 2.5rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.hero img{display:block;width:100%;height:auto;aspect-ratio:1200/630;object-fit:cover}
+h2{font-size:clamp(1.4rem,3vw,1.75rem);line-height:1.22;letter-spacing:-.015em;margin:3rem 0 1rem;font-weight:700;scroll-margin-top:1rem}
+h3{font-size:1.2rem;margin:2rem 0 .75rem;font-weight:700}
+p{margin:0 0 1.25rem}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:var(--accent-deep)}
+code{font-family:ui-monospace,"SF Mono",Monaco,monospace;font-size:.9em;background:var(--code-bg);border:1px solid var(--border);padding:.1em .4em;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;font-size:.875rem}
+pre code{background:none;border:none;padding:0}
+blockquote{border-left:3px solid var(--accent);padding:.4rem 0 .4rem 1.25rem;margin:0 0 1.5rem;color:var(--muted)}
+ul,ol{margin:0 0 1.25rem;padding-left:1.5rem}
+li{margin:.35rem 0}
+strong{font-weight:700;color:var(--text)}
+img{max-width:100%;height:auto}
+svg{max-width:100%;height:auto}
+figure{margin:0 0 1.75rem}
+figure svg{display:block;margin:0 auto}
+figcaption{color:var(--muted);font-size:.875rem;margin-top:.5rem}
+.table-wrap{max-width:100%;overflow-x:auto;margin:0 0 1.5rem;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}
+th{background:var(--code-bg);font-weight:700}
+.post-footer{margin-top:4rem;padding-top:2rem;border-top:1px solid var(--border);font-size:.875rem;color:var(--muted);font-family:ui-monospace,monospace;display:flex;flex-wrap:wrap;gap:.6rem 1.5rem;justify-content:space-between}
+.post-footer a{color:var(--accent);text-decoration:none}
+::selection{background:var(--accent);color:var(--bg)}
+@media print{body{background:#fff;color:#000;font-size:11pt}article{max-width:none;padding:0 1rem}.hero{box-shadow:none}.table-wrap{overflow:visible}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<article>
+<header>
+<p class="kicker">아키텍처 스타일 시리즈 3편</p>
+<h1>아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기</h1>
+<p class="dek">서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.</p>
+<p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 7 min read &middot; 1548 words</p>
+</header>
+<figure class="hero"><img src="hero.webp" alt="아키텍처 퀀텀 도식: 동기 호출과 공유 DB로 묶인 서비스 5개가 퀀텀 1, 비동기 메시지만 보내는 리뷰가 퀀텀 2" width="1200" height="630"></figure>
+<!--bs-body:start--><p>서비스를 여섯 개로 나눴다고 해서 여섯 개가 따로 움직이는 건 아니다. 수강 중인 온라인 소프트웨어 아키텍처 강의의 이번 수업은 그 차이를 아키텍처 퀀텀이라는 개념으로 설명했다. 온라인 서점을 주문, 결제, 알림, 재고, 카탈로그, 리뷰 서비스로 나눴는데, 알림 서비스가 멈추자 동기 호출을 타고 주문까지 멈췄다. 서비스는 여섯 개였지만 함께 배포하고 함께 장애를 겪는 덩어리는 두 개뿐이었다. 이 글은 퀀텀과 입도의 개념을 정리하고, TypeScript로 옮긴 유니온 파인드로 퀀텀을 직접 세어 본 학습 노트다.</p>
+<blockquote>
+<p><strong>핵심 요약</strong></p>
+<ul>
+<li>아키텍처 퀀텀은 독립적으로 배포되고, 기능이 응집돼 있으며, 정적 결합과 동기식 동적 결합으로 묶인 최소 단위다. 확장성이나 가용성 같은 특성을 독립적으로 정할 수 있는 단위이기도 하다.</li>
+<li>공유 DB나 공유 라이브러리는 정적 결합, 실행 중의 동기 호출은 동적 결합으로 서비스를 한 퀀텀에 묶는다. 기다리지 않는 비동기 메시지는 묶지 않는다.</li>
+<li>서점 사례에서 서비스는 6개지만 퀀텀은 2개였다. 주문, 결제, 알림, 재고, 카탈로그가 한 덩어리이고 리뷰만 따로 떨어진다.</li>
+<li>적절한 입도는 서비스를 쪼개는 힘(기능 범위, 코드 변동성, 확장성, 내결함성, 보안, 확장 가능성)과 합치는 힘(DB 트랜잭션, 워크플로우, 공유 코드, 데이터 관계)의 균형으로 정해진다.</li>
+<li>퀀텀을 잘게 나눌수록 메시지 지연, 중복 전달, 요청 추적 같은 비용이 생긴다. 두 힘이 부딪치면 사업 담당자와 무엇을 우선할지 함께 정해야 한다.</li>
+</ul>
+</blockquote>
+<h2>서비스 수와 퀀텀 수는 다르다</h2>
+<p>겉으로 나뉜 서비스 수와 실제로 함께 움직이는 덩어리 수는 다를 수 있다. 서점 예제에서 주문 서비스는 결제, 알림, 재고를 동기로 호출한다. 알림 서비스가 응답하지 않으면 주문 요청은 알림을 기다리다 시간 초과로 실패한다. 알림은 부가 기능인데도 장애는 주문 전체로 번진다.</p>
+<p>서비스를 나눈 목적이 독립 배포와 장애 격리였다면, 이 구조는 그 목적을 이루지 못한 셈이다. 수업은 이렇게 함께 움직이고 함께 장애를 겪는 덩어리를 세는 단위로 아키텍처 퀀텀을 소개했다.</p>
+<h2>모듈성과 서비스 입도</h2>
+<p>입도(granularity)는 서비스 하나의 크기를 말한다. 모듈성이 시스템을 나누는 일이라면, 입도는 나눈 조각을 얼마나 크게 둘지 정하는 일이다. 닐 포드, 마크 리처즈, 프라모드 사달라지(Pramod Sadalage), 자마크 데가니(Zhamak Dehghani)는 <a href="https://www.oreilly.com/library/view/software-architecture-the/9781492086888/">『Software Architecture: The Hard Parts』(O'Reilly)</a>에서 이 둘을 구분해서 다룬다.</p>
+<p>입도는 양쪽으로 실패할 수 있다.</p>
+<ul>
+<li><strong>너무 크면</strong>: 여러 팀이 한 서비스를 같이 고치고, 작은 변경에도 큰 덩어리를 통째로 배포해야 하는 병목이 남는다.</li>
+<li><strong>너무 작으면</strong>: 요청 하나가 여러 서비스를 거치며 네트워크 지연이 쌓이고, 한 서비스의 장애가 연쇄적으로 번진다. 시리즈 2편에서 시뮬레이션한 꼬리 지연이 바로 이 경우다.</li>
+</ul>
+<h2>아키텍처 퀀텀을 판단하는 기준</h2>
+<p>아키텍처 퀀텀은 아래 조건으로 판단하는 최소 단위다. 리처즈와 포드의 <a href="https://www.oreilly.com/library/view/fundamentals-of-software/9781492043447/">『Fundamentals of Software Architecture』(O'Reilly)</a>(국내판 『소프트웨어 아키텍처 101』)이 퀀텀을 독립 배포, 높은 기능 응집, 동기식 결합(connascence)으로 정의했고, 『The Hard Parts』는 이를 정적 결합과 동적 결합이라는 말로 다시 정리했다.</p>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>기준</th>
+<th>뜻</th>
+<th>서점 예</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>독립 배포</td>
+<td>다른 부분과 상관없이 따로 배포할 수 있다</td>
+<td>리뷰 서비스는 혼자 배포된다</td>
+</tr>
+<tr>
+<td>기능 응집</td>
+<td>하나의 업무 목적을 위해 모인 코드다</td>
+<td>주문 처리 흐름</td>
+</tr>
+<tr>
+<td>정적 결합</td>
+<td>빌드나 실행 전부터 묶여 있다: 공유 DB, 공유 라이브러리, 공유 스키마</td>
+<td>재고와 카탈로그가 shop_db를 같이 쓴다</td>
+</tr>
+<tr>
+<td>동적 결합</td>
+<td>실행 중에 묶인다: 상대 응답을 기다리는 동기 호출</td>
+<td>주문이 결제, 알림, 재고의 응답을 기다린다</td>
+</tr>
+</tbody>
+</table></div>
+<p>동적 결합에서 중요한 구분은 동기와 비동기다. 동기 호출은 상대가 응답할 때까지 기다리므로 상대의 지연과 장애를 그대로 넘겨받는다. 비동기 메시지는 큐에 넣고 바로 다음 일을 하므로, 받는 쪽이 잠시 멈춰도 보내는 쪽은 계속 움직인다. 그래서 동기 호출은 서비스를 한 퀀텀으로 묶고, 비동기 메시지는 퀀텀을 나눌 수 있다.</p>
+<h3>퀀텀을 세는 이유</h3>
+<p>퀀텀은 확장성, 가용성, 성능 같은 아키텍처 특성을 독립적으로 정할 수 있는 최소 단위다. 같은 퀀텀 안에서는 한 서비스만 가용성을 높여도 소용이 없다. 주문이 99.99% 가용성을 목표로 해도 동기로 묶인 알림이 99%라면, 주문 흐름의 가용성은 알림에 끌려 내려간다. 그래서 퀀텀 수는 "이 시스템에서 특성을 따로 정할 수 있는 단위가 몇 개인가"에 대한 답이 된다.</p>
+<h2>서점 사례: 서비스 6개, 퀀텀 2개</h2>
+<p>수업의 서점은 다음과 같이 연결돼 있다.</p>
+<ul>
+<li>주문은 결제, 알림, 재고를 <strong>동기</strong>로 호출한다.</li>
+<li>재고와 카탈로그는 <strong>같은 DB(shop_db)</strong>를 쓴다.</li>
+<li>리뷰는 카탈로그에 <strong>비동기</strong> 메시지를 보내고, 자기 DB(review_db)를 따로 쓴다.</li>
+</ul>
+<figure>
+<svg viewbox="0 0 560 270" role="img" aria-label="서점 서비스 6개가 퀀텀 2개로 묶인 구조도">
+<rect x="10" y="25" width="380" height="235" rx="10" fill="none" stroke="currentColor"></rect>
+<text x="22" y="47" font-size="14" fill="currentColor">퀀텀 1</text>
+<rect x="420" y="25" width="130" height="235" rx="10" fill="none" stroke="currentColor"></rect>
+<text x="432" y="47" font-size="14" fill="currentColor">퀀텀 2</text>
+<rect x="150" y="55" width="100" height="36" rx="6" fill="none" stroke="currentColor"></rect>
+<text x="200" y="78" font-size="13" text-anchor="middle" fill="currentColor">주문</text>
+<rect x="30" y="125" width="100" height="36" rx="6" fill="none" stroke="currentColor"></rect>
+<text x="80" y="148" font-size="13" text-anchor="middle" fill="currentColor">결제</text>
+<rect x="150" y="125" width="100" height="36" rx="6" fill="none" stroke="currentColor"></rect>
+<text x="200" y="148" font-size="13" text-anchor="middle" fill="currentColor">재고</text>
+<rect x="270" y="125" width="100" height="36" rx="6" fill="none" stroke="currentColor"></rect>
+<text x="320" y="148" font-size="13" text-anchor="middle" fill="currentColor">알림</text>
+<line x1="200" y1="91" x2="80" y2="125" stroke="currentColor" stroke-width="1.5"></line>
+<line x1="200" y1="91" x2="200" y2="125" stroke="currentColor" stroke-width="1.5"></line>
+<line x1="200" y1="91" x2="320" y2="125" stroke="currentColor" stroke-width="1.5"></line>
+<rect x="150" y="205" width="100" height="30" rx="14" fill="none" stroke="currentColor"></rect>
+<text x="200" y="225" font-size="12" text-anchor="middle" fill="currentColor">shop_db</text>
+<line x1="200" y1="161" x2="200" y2="205" stroke="currentColor" stroke-width="1.5"></line>
+<rect x="270" y="202" width="100" height="36" rx="6" fill="none" stroke="currentColor"></rect>
+<text x="320" y="225" font-size="13" text-anchor="middle" fill="currentColor">카탈로그</text>
+<line x1="250" y1="220" x2="270" y2="220" stroke="currentColor" stroke-width="1.5"></line>
+<rect x="435" y="125" width="100" height="36" rx="6" fill="none" stroke="currentColor"></rect>
+<text x="485" y="148" font-size="13" text-anchor="middle" fill="currentColor">리뷰</text>
+<rect x="435" y="205" width="100" height="30" rx="14" fill="none" stroke="currentColor"></rect>
+<text x="485" y="225" font-size="12" text-anchor="middle" fill="currentColor">review_db</text>
+<line x1="485" y1="161" x2="485" y2="205" stroke="currentColor" stroke-width="1.5"></line>
+</svg>
+<figcaption>서점 서비스 6개는 동기 호출과 공유 DB로 이어진 5개(퀀텀 1)와 리뷰(퀀텀 2)로 나뉜다. 선은 동기 호출 또는 DB 공유를 뜻하고, 리뷰에서 카탈로그로 가는 비동기 메시지는 그리지 않았다.</figcaption>
+</figure>
+
+<p>주문을 중심으로 결제, 알림, 재고가 동기 호출로 묶이고, 재고와 카탈로그는 공유 DB로 묶인다. 그러면 주문, 결제, 알림, 재고, 카탈로그 다섯 개가 하나의 퀀텀이 된다. 리뷰는 카탈로그와 비동기로만 통신하고 DB도 따로 쓰므로 별도 퀀텀으로 남는다. 서비스는 여섯 개지만 퀀텀은 두 개다.</p>
+<h2>서비스를 쪼개는 힘과 합치는 힘</h2>
+<p>입도를 정할 때 『The Hard Parts』는 서비스를 쪼개는 쪽으로 미는 힘(disintegrator)과 합치는 쪽으로 당기는 힘(integrator)을 나눠서 보라고 한다. 수업도 이 목록을 그대로 썼다.</p>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>쪼개는 힘</th>
+<th>언제 쪼개나</th>
+<th>합치는 힘</th>
+<th>언제 합치나</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기능 범위</td>
+<td>한 서비스가 서로 관계없는 일을 여럿 한다</td>
+<td>DB 트랜잭션</td>
+<td>여러 데이터를 한 트랜잭션으로 바꿔야 한다</td>
+</tr>
+<tr>
+<td>코드 변동성</td>
+<td>일부 코드만 유독 자주 바뀐다</td>
+<td>워크플로우</td>
+<td>서비스끼리 주고받는 호출이 많고 순서가 중요하다</td>
+</tr>
+<tr>
+<td>확장성(scalability)</td>
+<td>일부 기능만 트래픽이 크게 다르다</td>
+<td>공유 코드</td>
+<td>여러 서비스가 자주 바뀌는 코드를 같이 쓴다</td>
+</tr>
+<tr>
+<td>내결함성</td>
+<td>일부 기능의 장애가 나머지를 멈추게 한다</td>
+<td>데이터 관계</td>
+<td>데이터가 서로 강하게 얽혀 나누기 어렵다</td>
+</tr>
+<tr>
+<td>보안</td>
+<td>일부 데이터만 접근 통제가 엄격해야 한다</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>확장 가능성(extensibility)</td>
+<td>같은 종류의 기능이 계속 늘어난다</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>서점에 적용하면 알림은 내결함성 때문에 별도 퀀텀으로 떼어 내고 싶은 후보다. 반대로 주문과 결제는 돈이 오가는 하나의 트랜잭션이라 합치는 힘이 강하다.</p>
+<h3>두 힘이 부딪치면 사업 담당자와 정한다</h3>
+<p>쪼개는 힘과 합치는 힘이 충돌할 때 기술만으로 정답을 고르기는 어렵다. 예를 들어 서점의 결제는 이미 별도 서비스지만 주문과 동기 호출로 묶여 같은 퀀텀에 있다. 결제를 비동기로 바꿔 독립 퀀텀으로 떼면 결제 기능을 따로 바꿔 출시하기 쉬워지지만, 결제가 끝나기 전에 주문이 확정되는 상황을 다뤄야 해서 주문과 결제의 데이터 정합성을 지키는 비용이 커진다. 반대로 둘을 한 서비스로 합치면 정합성은 쉬워지고 출시 속도는 느려진다. 수업은 이때 개발팀이 혼자 결정하지 말고 사업 담당자와 "빠른 출시와 데이터 정합성 중 무엇이 더 중요한가"를 함께 논의하라고 했다. 트레이드오프의 비용을 누가 지는지 아는 사람이 결정에 참여해야 한다는 뜻으로 읽었다.</p>
+<h2>TypeScript 실습: 유니온 파인드로 퀀텀 세기</h2>
+<p>퀀텀을 세는 일은 그래프에서 연결된 묶음을 세는 일과 같다. 동기 호출과 공유 DB를 간선으로 보고, 간선으로 이어진 서비스를 한 묶음으로 합치면 된다. 이런 합치기에 맞는 자료구조가 <a href="https://en.wikipedia.org/wiki/Disjoint-set_data_structure">유니온 파인드(서로소 집합)</a>다. 수업 실습은 파이썬이었고, 이 글의 코드는 TypeScript로 옮겨 2026년 11월 25일 Node.js 24에서 실행한 것이다. 코드는 다음과 같다.</p>
+<pre><code class="language-ts">type Mode = &quot;sync&quot; | &quot;async&quot;;
+type Call = [from: string, to: string, mode: Mode];
+
+class UnionFind {
+  private parent = new Map&lt;string, string&gt;();
+
+  constructor(items: string[]) {
+    for (const x of items) this.parent.set(x, x);
+  }
+
+  find(x: string): string {
+    while (this.parent.get(x) !== x) {
+      const grand = this.parent.get(this.parent.get(x)!)!;
+      this.parent.set(x, grand); // 경로 압축
+      x = grand;
+    }
+    return x;
+  }
+
+  union(a: string, b: string): void {
+    this.parent.set(this.find(a), this.find(b));
+  }
+}
+
+function quanta(services: string[], calls: Call[], databases: Record&lt;string, string[]&gt;): string[][] {
+  const uf = new UnionFind(services);
+  for (const [from, to, mode] of calls) {
+    if (mode === &quot;sync&quot;) uf.union(from, to); // 동기 호출만 묶는다
+  }
+  for (const users of Object.values(databases)) {
+    for (const s of users.slice(1)) uf.union(users[0], s); // 같은 DB를 쓰면 묶는다
+  }
+  const groups = new Map&lt;string, string[]&gt;();
+  for (const s of services) {
+    const root = uf.find(s);
+    groups.set(root, [...(groups.get(root) ?? []), s]);
+  }
+  return [...groups.values()].map((g) =&gt; g.sort()).sort((a, b) =&gt; a.join().localeCompare(b.join()));
+}
+
+const SERVICES = [&quot;order&quot;, &quot;payment&quot;, &quot;notification&quot;, &quot;inventory&quot;, &quot;catalog&quot;, &quot;review&quot;];
+const CALLS: Call[] = [
+  [&quot;order&quot;, &quot;payment&quot;, &quot;sync&quot;],
+  [&quot;order&quot;, &quot;notification&quot;, &quot;sync&quot;],
+  [&quot;order&quot;, &quot;inventory&quot;, &quot;sync&quot;],
+  [&quot;review&quot;, &quot;catalog&quot;, &quot;async&quot;],
+];
+const DATABASES = { shop_db: [&quot;inventory&quot;, &quot;catalog&quot;], review_db: [&quot;review&quot;] };
+</code></pre>
+<h3>실행 결과: 호출 방식과 DB가 퀀텀 수를 바꾼다</h3>
+<p>기본 구성과 함께 세 가지 변형을 돌렸다. 변형은 호출 목록과 DB 목록만 바꿔서 같은 함수에 넣었다.</p>
+<pre><code class="language-ts">function show(title: string, calls: Call[] = CALLS, dbs: Record&lt;string, string[]&gt; = DATABASES) {
+  const q = quanta(SERVICES, calls, dbs);
+  console.log(`${title}: ${q.length}개 -&gt; ${JSON.stringify(q)}`);
+}
+
+const notifyAsync = CALLS.map((c): Call =&gt; (c[1] === &quot;notification&quot; ? [&quot;order&quot;, &quot;notification&quot;, &quot;async&quot;] : c));
+const splitDb = { inventory_db: [&quot;inventory&quot;], catalog_db: [&quot;catalog&quot;], review_db: [&quot;review&quot;] };
+const reviewSync = CALLS.map((c): Call =&gt; (c[0] === &quot;review&quot; ? [&quot;review&quot;, &quot;catalog&quot;, &quot;sync&quot;] : c));
+
+show(&quot;기본 서점&quot;);
+show(&quot;주문-&gt;알림을 비동기로&quot;, notifyAsync);
+show(&quot;주문-&gt;알림 비동기 + 카탈로그 DB 분리&quot;, notifyAsync, splitDb);
+show(&quot;리뷰-&gt;카탈로그를 동기로&quot;, reviewSync);
+</code></pre>
+<p><code>node quantum.ts</code>로 실행한 출력은 다음과 같다. 공유 라이브러리도 정적 결합이므로, 모델에 넣고 싶다면 <code>DATABASES</code>처럼 라이브러리별 사용 서비스 목록을 하나 더 두고 같은 방식으로 묶으면 된다.</p>
+<pre><code class="language-text">기본 서점: 2개 -&gt; [[&quot;catalog&quot;,&quot;inventory&quot;,&quot;notification&quot;,&quot;order&quot;,&quot;payment&quot;],[&quot;review&quot;]]
+주문-&gt;알림을 비동기로: 3개 -&gt; [[&quot;catalog&quot;,&quot;inventory&quot;,&quot;order&quot;,&quot;payment&quot;],[&quot;notification&quot;],[&quot;review&quot;]]
+주문-&gt;알림 비동기 + 카탈로그 DB 분리: 4개 -&gt; [[&quot;catalog&quot;],[&quot;inventory&quot;,&quot;order&quot;,&quot;payment&quot;],[&quot;notification&quot;],[&quot;review&quot;]]
+리뷰-&gt;카탈로그를 동기로: 1개 -&gt; [[&quot;catalog&quot;,&quot;inventory&quot;,&quot;notification&quot;,&quot;order&quot;,&quot;payment&quot;,&quot;review&quot;]]
+</code></pre>
+<p>표로 옮기면 이렇다. 마지막 변형은 수업이 낸 질문, "리뷰가 카탈로그를 동기로 호출하면 퀀텀 수는 어떻게 되나"에 대한 답이다.</p>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>구성</th>
+<th>퀀텀 수</th>
+<th>묶음</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기본 서점</td>
+<td>2</td>
+<td>(주문, 결제, 알림, 재고, 카탈로그), (리뷰)</td>
+</tr>
+<tr>
+<td>주문에서 알림 호출을 비동기로</td>
+<td>3</td>
+<td>(주문, 결제, 재고, 카탈로그), (알림), (리뷰)</td>
+</tr>
+<tr>
+<td>위 변경 + 재고와 카탈로그 DB 분리</td>
+<td>4</td>
+<td>(주문, 결제, 재고), (카탈로그), (알림), (리뷰)</td>
+</tr>
+<tr>
+<td>리뷰에서 카탈로그 호출을 동기로</td>
+<td>1</td>
+<td>여섯 서비스 전부</td>
+</tr>
+</tbody>
+</table></div>
+<p>알림 호출 하나를 비동기로 바꾸자 알림이 떨어져 나와 퀀텀이 3개가 됐다. 이제 알림이 멈춰도 주문은 계속 받을 수 있다. 재고와 카탈로그의 DB까지 나누면 카탈로그도 떨어져 4개가 된다. 반대로 리뷰가 카탈로그를 동기로 부르기 시작하면 리뷰가 큰 덩어리에 들어가 퀀텀이 1개로 줄어든다. 서비스가 여섯 개로 나뉘어 있어도, 운영 특성으로 보면 사실상 하나의 모놀리스가 되는 것이다.</p>
+<h2>퀀텀을 잘게 나누는 대가</h2>
+<p>퀀텀을 나누는 건 공짜가 아니다. 알림을 비동기로 바꾼 순간 새로 감당해야 할 일이 생긴다.</p>
+<ul>
+<li><strong>메시지 지연</strong>: 주문 완료 알림이 몇 초, 길게는 몇 분 늦게 갈 수 있다.</li>
+<li><strong>중복 전달</strong>: 많은 메시지 큐가 최소 한 번 전달(at-least-once)을 기본으로 하므로 같은 알림이 두 번 갈 수 있다. 예를 들어 <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html">Amazon SQS 표준 큐 문서</a>는 메시지가 한 번 이상 전달될 수 있다고 밝히고, <a href="https://kafka.apache.org/documentation/#semantics">Kafka 문서</a>도 전달 보장 방식별 차이를 따로 설명한다. 받는 쪽이 같은 메시지를 여러 번 받아도 결과가 같도록 만들어야 한다.</li>
+<li><strong>요청 추적의 어려움</strong>: 요청 하나가 동기 호출과 메시지를 넘나들면, 장애가 났을 때 어디서 멈췄는지 따라가기 어렵다. 요청마다 추적 ID를 붙여 로그와 메시지에 실어 보내야 한다.</li>
+</ul>
+<p>시리즈 2편에서 본 결론과 같은 이야기다. 나누면 독립성을 얻지만 그만큼 복잡도를 낸다. 퀀텀 수는 많을수록 좋은 숫자가 아니라, 독립적으로 정해야 하는 특성이 몇 개인지에 맞춰야 하는 숫자다.</p>
+<h2>자주 묻는 질문</h2>
+<h3>아키텍처 퀀텀과 마이크로서비스 하나는 같은 건가요?</h3>
+<p>같지 않다. 마이크로서비스 하나는 배포 단위 하나지만, 동기 호출이나 공유 DB로 다른 서비스와 묶여 있으면 퀀텀은 그 묶음 전체가 된다. 이상적인 마이크로서비스 아키텍처에서는 서비스 하나가 퀀텀 하나에 가깝지만, 서점 사례처럼 실제로는 여러 서비스가 한 퀀텀을 이루는 경우가 많다.</p>
+<h3>모놀리스는 퀀텀이 몇 개인가요?</h3>
+<p>배포 단위가 하나이고 DB도 하나인 모놀리스는 퀀텀이 1개다. 시리즈 1편의 모듈러 모놀리스도 모듈이 아무리 잘 나뉘어 있어도 함께 배포되므로 퀀텀은 1개다. 모듈 경계는 나중에 퀀텀을 나눌 때 자를 자리를 미리 준비해 두는 역할을 한다.</p>
+<h3>동기 호출을 전부 비동기로 바꾸면 되지 않나요?</h3>
+<p>사용자가 결과를 바로 알아야 하는 호출은 비동기로 바꾸기 어렵다. 결제 승인 여부를 모른 채 주문 완료 화면을 보여 줄 수는 없다. 알림처럼 늦어도 되는 호출부터 비동기로 바꾸고, 결제처럼 즉시 결과가 필요한 호출은 같은 퀀텀에 두는 편이 현실적이다.</p>
+<h2>정리: 나눈 개수보다 함께 움직이는 덩어리를 센다</h2>
+<p>서비스를 몇 개로 나눴는지보다 중요한 건 함께 배포되고 함께 장애를 겪는 덩어리, 즉 아키텍처 퀀텀이 몇 개인지다. 퀀텀은 독립 배포, 기능 응집, 정적 결합, 동적 결합으로 판단하고, 동기 호출과 공유 DB를 따라가면 유니온 파인드로 쉽게 셀 수 있다. 서점 사례에서는 호출 하나를 비동기로 바꾸거나 DB 하나를 나누는 것만으로 퀀텀이 2개에서 3개, 4개로 늘었고, 동기 호출 하나를 더하자 1개로 줄었다.</p>
+<p>입도는 쪼개는 힘과 합치는 힘의 균형으로 정하고, 둘이 부딪치면 사업의 우선순위로 판단한다. 다음 수업에서는 독립 배포를 핵심으로 하는 마이크로서비스 아키텍처를 본격적으로 다룬다고 한다.</p>
+<hr>
+<p><strong>글쓴이 HanSungLin</strong> · TypeScript·Node.js 백엔드 개발자입니다. 여러 오픈마켓과 상품·주문을 연동하는 서비스를 운영하며, 레이어드 구조의 웹 서버와 큐 기반 워커로 이뤄진 시스템을 다룹니다. 실무에서 마주친 설계 문제를 이해하려고 소프트웨어 아키텍처를 공부하며 기록합니다. 이 글은 온라인 강의를 들으며 정리한 노트이고, 실습 코드는 수업의 파이썬 예제를 TypeScript로 옮겨 실행한 것입니다.</p><!--bs-body:end-->
+<footer class="post-footer"><span>Published at <a href="https://sungrinhan.github.io" data-bs-generated="1">sungrinhan.github.io</a></span><span>2026-11-25 &middot; HanSungLin</span></footer>
+</article>
+</body>
+</html>
