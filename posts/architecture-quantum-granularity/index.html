@@ -9,8 +9,8 @@
 <meta name="description" content="서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.">
 <link rel="canonical" href="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/">
 <meta name="author" content="HanSungLin">
-<meta name="blog-source-sha256" content="bd39f343dd2ca45b797f3ce655bd5d8e69b47b2cf466f66c206a8cd63933b0f8">
-<meta name="blog-body-sha256" content="506bd6021a3c6fd59fef4e21763308ec16536cfe8b8720cc535ba6ef039c441a">
+<meta name="blog-source-sha256" content="be5bc366b32c7673b9781016aec0895efcc635e8c28696b50aa62d260ccb2443">
+<meta name="blog-body-sha256" content="744221cba3328a516de0523b737a6378cb371c4de5aa277f2ad5076c637b8514">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="article">
 <meta property="og:title" content="아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기">
@@ -27,7 +27,7 @@
 <meta name="twitter:title" content="아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기">
 <meta name="twitter:description" content="서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.">
 <meta name="twitter:image" content="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/hero.webp">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기", "description": "서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.", "image": "https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/hero.webp", "datePublished": "2026-11-25", "dateModified": "2026-11-25", "author": {"@type": "Person", "name": "HanSungLin"}, "wordCount": 1548, "keywords": "소프트웨어 아키텍처, 아키텍처 퀀텀, 서비스 입도, 마이크로서비스, 유니온 파인드", "inLanguage": "ko", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기", "description": "서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.", "image": "https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/hero.webp", "datePublished": "2026-11-25", "dateModified": "2026-11-25", "author": {"@type": "Person", "name": "HanSungLin"}, "wordCount": 1595, "keywords": "소프트웨어 아키텍처, 아키텍처 퀀텀, 서비스 입도, 마이크로서비스, 유니온 파인드", "inLanguage": "ko", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/"}}</script>
 <style>
 :root{--bg:#fafaf9;--surface:#fff;--text:#1c1917;--muted:#57534e;--soft:#78716c;--accent:#0f766e;--accent-soft:#ccfbf1;--accent-deep:#115e59;--border:#e7e5e4;--code-bg:#f5f5f4;--warn:#b91c1c;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04)}
 @media (prefers-color-scheme:dark){:root{--bg:#18181b;--surface:#27272a;--text:#fafafa;--muted:#a1a1aa;--soft:#92929c;--accent:#2dd4bf;--accent-soft:#134e4a;--accent-deep:#99f6e4;--border:#3f3f46;--code-bg:#1f1f23;--warn:#fca5a5;--shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3)}}
@@ -78,7 +78,7 @@ th{background:var(--code-bg);font-weight:700}
 <p class="kicker">아키텍처 스타일 시리즈 3편</p>
 <h1>아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기</h1>
 <p class="dek">서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.</p>
-<p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 7 min read &middot; 1548 words</p>
+<p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 7 min read &middot; 1595 words</p>
 </header>
 <figure class="hero"><img src="hero.webp" alt="아키텍처 퀀텀 도식: 동기 호출과 공유 DB로 묶인 서비스 5개가 퀀텀 1, 비동기 메시지만 보내는 리뷰가 퀀텀 2" width="1200" height="630"></figure>
 <!--bs-body:start--><p>서비스를 여섯 개로 나눴다고 해서 여섯 개가 따로 움직이는 건 아니다. 수강 중인 온라인 소프트웨어 아키텍처 강의의 이번 수업은 그 차이를 아키텍처 퀀텀이라는 개념으로 설명했다. 온라인 서점을 주문, 결제, 알림, 재고, 카탈로그, 리뷰 서비스로 나눴는데, 알림 서비스가 멈추자 동기 호출을 타고 주문까지 멈췄다. 서비스는 여섯 개였지만 함께 배포하고 함께 장애를 겪는 덩어리는 두 개뿐이었다. 이 글은 퀀텀과 입도의 개념을 정리하고, TypeScript로 옮긴 유니온 파인드로 퀀텀을 직접 세어 본 학습 노트다.</p>
@@ -100,7 +100,7 @@ th{background:var(--code-bg);font-weight:700}
 <p>입도는 양쪽으로 실패할 수 있다.</p>
 <ul>
 <li><strong>너무 크면</strong>: 여러 팀이 한 서비스를 같이 고치고, 작은 변경에도 큰 덩어리를 통째로 배포해야 하는 병목이 남는다.</li>
-<li><strong>너무 작으면</strong>: 요청 하나가 여러 서비스를 거치며 네트워크 지연이 쌓이고, 한 서비스의 장애가 연쇄적으로 번진다. 시리즈 2편에서 시뮬레이션한 꼬리 지연이 바로 이 경우다.</li>
+<li><strong>너무 작으면</strong>: 요청 하나가 여러 서비스를 거치며 네트워크 지연이 쌓이고, 한 서비스의 장애가 연쇄적으로 번진다. <a href="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/">시리즈 2편에서 시뮬레이션한 꼬리 지연</a>이 바로 이 경우다.</li>
 </ul>
 <h2>아키텍처 퀀텀을 판단하는 기준</h2>
 <p>아키텍처 퀀텀은 아래 조건으로 판단하는 최소 단위다. 리처즈와 포드의 <a href="https://www.oreilly.com/library/view/fundamentals-of-software/9781492043447/">『Fundamentals of Software Architecture』(O'Reilly)</a>(국내판 『소프트웨어 아키텍처 101』)이 퀀텀을 독립 배포, 높은 기능 응집, 동기식 결합(connascence)으로 정의했고, 『The Hard Parts』는 이를 정적 결합과 동적 결합이라는 말로 다시 정리했다.</p>
@@ -344,19 +344,25 @@ show(&quot;리뷰-&gt;카탈로그를 동기로&quot;, reviewSync);
 <li><strong>중복 전달</strong>: 많은 메시지 큐가 최소 한 번 전달(at-least-once)을 기본으로 하므로 같은 알림이 두 번 갈 수 있다. 예를 들어 <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html">Amazon SQS 표준 큐 문서</a>는 메시지가 한 번 이상 전달될 수 있다고 밝히고, <a href="https://kafka.apache.org/documentation/#semantics">Kafka 문서</a>도 전달 보장 방식별 차이를 따로 설명한다. 받는 쪽이 같은 메시지를 여러 번 받아도 결과가 같도록 만들어야 한다.</li>
 <li><strong>요청 추적의 어려움</strong>: 요청 하나가 동기 호출과 메시지를 넘나들면, 장애가 났을 때 어디서 멈췄는지 따라가기 어렵다. 요청마다 추적 ID를 붙여 로그와 메시지에 실어 보내야 한다.</li>
 </ul>
-<p>시리즈 2편에서 본 결론과 같은 이야기다. 나누면 독립성을 얻지만 그만큼 복잡도를 낸다. 퀀텀 수는 많을수록 좋은 숫자가 아니라, 독립적으로 정해야 하는 특성이 몇 개인지에 맞춰야 하는 숫자다.</p>
+<p><a href="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/">2편의 꼬리 지연 시뮬레이션</a>에서 본 결론과 같은 이야기다. 나누면 독립성을 얻지만 그만큼 복잡도를 낸다. 퀀텀 수는 많을수록 좋은 숫자가 아니라, 독립적으로 정해야 하는 특성이 몇 개인지에 맞춰야 하는 숫자다.</p>
 <h2>자주 묻는 질문</h2>
 <h3>아키텍처 퀀텀과 마이크로서비스 하나는 같은 건가요?</h3>
 <p>같지 않다. 마이크로서비스 하나는 배포 단위 하나지만, 동기 호출이나 공유 DB로 다른 서비스와 묶여 있으면 퀀텀은 그 묶음 전체가 된다. 이상적인 마이크로서비스 아키텍처에서는 서비스 하나가 퀀텀 하나에 가깝지만, 서점 사례처럼 실제로는 여러 서비스가 한 퀀텀을 이루는 경우가 많다.</p>
 <h3>모놀리스는 퀀텀이 몇 개인가요?</h3>
-<p>배포 단위가 하나이고 DB도 하나인 모놀리스는 퀀텀이 1개다. 시리즈 1편의 모듈러 모놀리스도 모듈이 아무리 잘 나뉘어 있어도 함께 배포되므로 퀀텀은 1개다. 모듈 경계는 나중에 퀀텀을 나눌 때 자를 자리를 미리 준비해 두는 역할을 한다.</p>
+<p>배포 단위가 하나이고 DB도 하나인 모놀리스는 퀀텀이 1개다. <a href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">시리즈 1편의 모듈러 모놀리스</a>도 모듈이 아무리 잘 나뉘어 있어도 함께 배포되므로 퀀텀은 1개다. 모듈 경계는 나중에 퀀텀을 나눌 때 자를 자리를 미리 준비해 두는 역할을 한다.</p>
 <h3>동기 호출을 전부 비동기로 바꾸면 되지 않나요?</h3>
 <p>사용자가 결과를 바로 알아야 하는 호출은 비동기로 바꾸기 어렵다. 결제 승인 여부를 모른 채 주문 완료 화면을 보여 줄 수는 없다. 알림처럼 늦어도 되는 호출부터 비동기로 바꾸고, 결제처럼 즉시 결과가 필요한 호출은 같은 퀀텀에 두는 편이 현실적이다.</p>
 <h2>정리: 나눈 개수보다 함께 움직이는 덩어리를 센다</h2>
 <p>서비스를 몇 개로 나눴는지보다 중요한 건 함께 배포되고 함께 장애를 겪는 덩어리, 즉 아키텍처 퀀텀이 몇 개인지다. 퀀텀은 독립 배포, 기능 응집, 정적 결합, 동적 결합으로 판단하고, 동기 호출과 공유 DB를 따라가면 유니온 파인드로 쉽게 셀 수 있다. 서점 사례에서는 호출 하나를 비동기로 바꾸거나 DB 하나를 나누는 것만으로 퀀텀이 2개에서 3개, 4개로 늘었고, 동기 호출 하나를 더하자 1개로 줄었다.</p>
 <p>입도는 쪼개는 힘과 합치는 힘의 균형으로 정하고, 둘이 부딪치면 사업의 우선순위로 판단한다. 다음 수업에서는 독립 배포를 핵심으로 하는 마이크로서비스 아키텍처를 본격적으로 다룬다고 한다.</p>
+<h2>아키텍처 스타일 시리즈</h2>
+<ol>
+<li><a href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기</a></li>
+<li><a href="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/">분산 아키텍처 5가지 스타일과 꼬리 지연</a></li>
+<li>아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기 (이 글)</li>
+</ol>
 <hr>
-<p><strong>글쓴이 HanSungLin</strong> · TypeScript·Node.js 백엔드 개발자입니다. 여러 오픈마켓과 상품·주문을 연동하는 서비스를 운영하며, 레이어드 구조의 웹 서버와 큐 기반 워커로 이뤄진 시스템을 다룹니다. 실무에서 마주친 설계 문제를 이해하려고 소프트웨어 아키텍처를 공부하며 기록합니다. 이 글은 온라인 강의를 들으며 정리한 노트이고, 실습 코드는 수업의 파이썬 예제를 TypeScript로 옮겨 실행한 것입니다.</p><!--bs-body:end-->
+<p><strong>글쓴이 HanSungLin</strong> · TypeScript·Node.js 백엔드 개발자입니다. 여러 오픈마켓과 상품·주문을 연동하는 서비스를 운영하며, 레이어드 구조의 웹 서버와 큐 기반 워커로 이뤄진 시스템을 다룹니다. 실무에서 마주친 설계 문제를 이해하려고 소프트웨어 아키텍처를 공부하며 기록합니다. 편집 원칙은 <a href="https://sungrinhan.github.io/dev-notes/about/">소개 페이지</a>에 있고, 틀린 내용은 <a href="https://github.com/Sungrinhan/dev-notes/issues">GitHub 이슈</a>로 알려 주세요. 이 글은 온라인 강의를 들으며 정리한 노트이고, 실습 코드는 수업의 파이썬 예제를 TypeScript로 옮겨 실행한 것입니다.</p><!--bs-body:end-->
 <footer class="post-footer"><span>Published at <a href="https://sungrinhan.github.io" data-bs-generated="1">sungrinhan.github.io</a></span><span>2026-11-25 &middot; HanSungLin</span></footer>
 </article>
 </body>
