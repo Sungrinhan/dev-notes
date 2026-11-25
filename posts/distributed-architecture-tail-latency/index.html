@@ -9,8 +9,8 @@
 <meta name="description" content="서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.">
 <link rel="canonical" href="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/">
 <meta name="author" content="HanSungLin">
-<meta name="blog-source-sha256" content="a4309c16a77a61240571b83ef288e04f3867129dd15abf150d64614ab4e7abce">
-<meta name="blog-body-sha256" content="31f7f271053e92d8b45e029feafe529cdef6c9ef18084f80ec21d91cc635b6df">
+<meta name="blog-source-sha256" content="fba98f2c3cf20c868f365419b6d5a5d52adacaac6dc9b35701832cd00cffc970">
+<meta name="blog-body-sha256" content="4b648b6df447400d686b5e5115412547603538ca4d50c8f3cc8e4e0550297aca">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="article">
 <meta property="og:title" content="분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용">
@@ -20,14 +20,14 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="분산 아키텍처 5가지 스타일과 꼬리 지연: 거친 서비스 수가 1개에서 20개로 늘 때 p99가 18ms에서 579ms로 커지는 막대 도식">
-<meta property="og:site_name" content="sungrinhan.github.io">
+<meta property="og:site_name" content="dev-notes">
 <meta property="article:published_time" content="2026-11-25">
 <meta property="article:author" content="HanSungLin">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용">
 <meta name="twitter:description" content="서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.">
 <meta name="twitter:image" content="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/hero.webp">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용", "description": "서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.", "image": "https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/hero.webp", "datePublished": "2026-11-25", "dateModified": "2026-11-25", "author": {"@type": "Person", "name": "HanSungLin"}, "wordCount": 1849, "keywords": "소프트웨어 아키텍처, 분산 아키텍처, 마이크로서비스, 꼬리 지연, p99", "inLanguage": "ko", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용", "description": "서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.", "image": "https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/hero.webp", "datePublished": "2026-11-25", "dateModified": "2026-11-25", "author": {"@type": "Person", "name": "HanSungLin"}, "wordCount": 2000, "keywords": "소프트웨어 아키텍처, 분산 아키텍처, 마이크로서비스, 꼬리 지연, p99", "inLanguage": "ko", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/"}}</script>
 <style>
 :root{--bg:#fafaf9;--surface:#fff;--text:#1c1917;--muted:#57534e;--soft:#78716c;--accent:#0f766e;--accent-soft:#ccfbf1;--accent-deep:#115e59;--border:#e7e5e4;--code-bg:#f5f5f4;--warn:#b91c1c;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04)}
 @media (prefers-color-scheme:dark){:root{--bg:#18181b;--surface:#27272a;--text:#fafafa;--muted:#a1a1aa;--soft:#92929c;--accent:#2dd4bf;--accent-soft:#134e4a;--accent-deep:#99f6e4;--border:#3f3f46;--code-bg:#1f1f23;--warn:#fca5a5;--shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3)}}
@@ -78,7 +78,7 @@ th{background:var(--code-bg);font-weight:700}
 <p class="kicker">아키텍처 스타일 시리즈 2편</p>
 <h1>분산 아키텍처 5가지 스타일과 꼬리 지연: p99로 본 서비스 분리의 비용</h1>
 <p class="dek">서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스의 장단점을 비교하고, TypeScript 시뮬레이션으로 서비스 수에 따라 p99 꼬리 지연이 커지는 과정을 확인한 학습 노트입니다.</p>
-<p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 9 min read &middot; 1849 words</p>
+<p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 10 min read &middot; 2000 words</p>
 </header>
 <figure class="hero"><img src="hero.webp" alt="분산 아키텍처 5가지 스타일과 꼬리 지연: 거친 서비스 수가 1개에서 20개로 늘 때 p99가 18ms에서 579ms로 커지는 막대 도식" width="1200" height="630"></figure>
 <!--bs-body:start--><p>모놀리식 애플리케이션을 여러 서비스로 나누면 내부 함수 호출이 네트워크 요청으로 바뀐다. 그 순간 지연과 실패라는 비용이 생긴다. 수강 중인 온라인 소프트웨어 아키텍처 강의에서 이번 수업은 분산 아키텍처의 다섯 가지 스타일을 비교하고, 서비스를 여러 번 거칠수록 느린 요청이 늘어나는 꼬리 지연을 시뮬레이션으로 확인했다. 수업 실습은 파이썬이었는데, 나는 TypeScript로 옮겨 직접 돌렸다. 그 결과 서비스마다 느린 호출 확률이 1%뿐인데도 10개 서비스를 거치면 요청의 9.6%가 느린 호출을 한 번 이상 만났다. 이 글은 그 결과와 스타일 선택 기준을 정리한 학습 노트다.</p>
@@ -88,12 +88,12 @@ th{background:var(--code-bg);font-weight:700}
 <li>분산은 확장을 쉽게 해 주는 대신 함수 호출을 네트워크 호출로 바꾼다. 네트워크가 믿을 만하고 지연이 없다는 가정은 분산 컴퓨팅의 대표적인 오류다.</li>
 <li>서비스 기반, 이벤트 드리븐, 스페이스 기반, 오케스트레이션 SOA, 마이크로서비스는 각자 다른 품질을 얻고 다른 비용을 낸다.</li>
 <li>스타일은 확장성, 성능 같은 품질 요구사항 중 설계를 이끄는 소수의 드라이빙 특성을 먼저 정한 뒤 고른다.</li>
-<li>각 서비스가 빨라도 여러 서비스를 거치면 느린 호출을 만날 확률이 쌓인다. 내 시뮬레이션에서 p99는 서비스 1개일 때 17.5ms, 10개일 때 299ms였다. 평균만 봐서는 이 변화가 잘 안 보인다.</li>
+<li>각 서비스가 빨라도 여러 서비스를 거치면 느린 호출을 만날 확률이 쌓인다. 내 시뮬레이션에서 p99는 서비스 1개일 때 17.5ms, 10개일 때 299ms였다. p99는 고르게 늘지 않고 계단처럼 뛰는데, 평균만 봐서는 이 변화가 잘 안 보인다.</li>
 <li>전부 나누기보다 연말에 트래픽이 몰리는 주문 도메인처럼 꼭 필요한 부분만 떼어 내는 접근이 현실적이다.</li>
 </ul>
 </blockquote>
 <h2>분산 아키텍처는 왜 필요하고 무엇을 대가로 내나</h2>
-<p>분산 아키텍처는 애플리케이션을 여러 배포 단위로 나누고 네트워크로 연결하는 구조다. <a href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">시리즈 1편</a>에서 다룬 모놀리식은 배포 단위가 하나라서, 트래픽이 늘면 전체를 통째로 복제해 확장해야 한다. 주문 화면만 붐벼도 카탈로그와 리뷰 코드까지 같이 늘어난다.</p>
+<p>분산 아키텍처는 애플리케이션을 여러 배포 단위로 나누고 네트워크로 연결하는 구조다. <a href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">시리즈 1편에서 다룬 모놀리식</a>은 배포 단위가 하나라서, 트래픽이 늘면 전체를 통째로 복제해 확장해야 한다. 주문 화면만 붐벼도 카탈로그와 리뷰 코드까지 같이 늘어난다.</p>
 <p>앱을 나누면 필요한 부분만 키울 수 있다. 대신 프로세스 안의 함수 호출이던 것이 네트워크 요청이 된다. 함수 호출은 거의 실패하지 않고 지연도 일정하지만, 네트워크 요청은 느려지고, 끊기고, 가끔 아예 응답이 없다.</p>
 <h3>분산 컴퓨팅에서 피해야 할 여덟 가지 가정</h3>
 <p>분산 시스템을 설계할 때 흔히 빠지는 잘못된 가정을 정리한 목록이 있다. <a href="https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing">분산 컴퓨팅의 오류(Fallacies of distributed computing)</a>는 1994년 썬 마이크로시스템즈의 L. Peter Deutsch가 일곱 가지로 정리했고, 1997년 무렵 James Gosling이 여덟 번째를 더했다.</p>
@@ -173,7 +173,7 @@ th{background:var(--code-bg);font-weight:700}
 <h2>TypeScript로 확인한 꼬리 지연</h2>
 <p>꼬리 지연은 지연 분포의 끝부분, 즉 가장 느린 소수 요청이 겪는 지연을 말한다. 보통 p99(100번 중 가장 느린 1번 정도의 지연)로 잰다. 서비스 하나는 대부분 빨라도, 요청이 여러 서비스를 거치면 그중 하나라도 느릴 확률이 쌓인다.</p>
 <h3>시뮬레이션 설정</h3>
-<p>수업의 파이썬 예제를 TypeScript로 옮겨 Node.js 24에서 직접 돌렸다. 설정은 다음과 같다.</p>
+<p>수업의 파이썬 예제를 TypeScript로 옮겨 Node.js 24에서 직접 돌렸다. 아래에 핵심 부분만 싣고, 요청 루프와 집계까지 담은 전체 코드는 <a href="https://github.com/Sungrinhan/dev-notes/blob/main/code/tailLatency.ts">tailLatency.ts</a>에 공개했다. 설정은 다음과 같다.</p>
 <ul>
 <li>서비스 호출 한 번은 99% 확률로 평균 10ms(표준편차 2ms), 1% 확률로 200ms가 걸린다.</li>
 <li>요청 하나가 서비스 1, 3, 5, 10, 20개를 순서대로 거친다.</li>
@@ -218,7 +218,7 @@ function request(nServices: number): number {
 const totals = Array.from({ length: 100_000 }, () =&gt; request(10)); // 서비스 10개
 const p99 = percentile(totals, 0.99);
 </code></pre>
-<h3>결과: 평균은 천천히, 꼬리는 빠르게 늘어난다</h3>
+<h3>결과: 평균은 고르게, p99는 계단처럼 뛴다</h3>
 <div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
 <thead>
 <tr>
@@ -273,10 +273,11 @@ const p99 = percentile(totals, 0.99);
 </tr>
 </tbody>
 </table></div>
-<p>서비스 1개일 때는 느린 호출 비율이 1%에 조금 못 미쳐(0.99%) p99가 아직 빠른 쪽(17.5ms)에 걸린다. 3개만 거쳐도 느린 호출을 만난 요청이 약 3%로 늘어 p99가 221ms로 뛴다. 평균은 서비스 수에 비례해 완만하게 늘 뿐이라, 평균 대시보드만 보면 이 변화를 놓친다. 느린 호출을 만난 비율은 이론값 1 - 0.99^N과 거의 같았다.</p>
+<p>서비스 1개일 때는 느린 호출 비율이 1%에 조금 못 미쳐(0.99%) p99가 아직 빠른 쪽(17.5ms)에 걸린다. 3개만 거쳐도 느린 호출을 만난 요청이 약 3%로 늘어 p99가 221ms로 뛴다. 평균은 서비스 수에 비례해 고르게 늘 뿐이라, 평균 대시보드만 보면 이 변화를 놓친다. 느린 호출을 만난 비율은 이론값 1 - 0.99^N과 거의 같았다.</p>
+<p>표를 자세히 보면 p99는 계단 모양으로 움직인다. 느린 호출을 한 번이라도 만날 확률이 1%를 넘는 순간(서비스 3개) p99가 느린 호출 1번 몫인 200ms대로 올라서고, 서비스 5개와 10개에서는 같은 계단 위에서 조금씩만 늘어난다. 서비스 20개에서는 느린 호출을 두 번 이상 만날 확률이 약 1.7%로 1%를 넘어서 p99가 다시 한 계단(약 580ms) 뛴다. 그래서 p99와 평균의 차이는 서비스 3개에서 크게 벌어진 뒤 한동안 비슷하게 유지된다.</p>
 <p>같은 계산은 큰 시스템에서 더 극적이다. Jeffrey Dean과 Luiz André Barroso는 2013년 Communications of the ACM 논문 <a href="https://research.google/pubs/the-tail-at-scale/">「The Tail at Scale」</a>에서, 서버 하나가 100번 중 1번 1초 이상 걸릴 때 요청 하나가 서버 100대의 응답을 모아야 한다면 사용자 요청의 63%가 1초를 넘긴다는 예를 든다. 논문은 서버 100대에 병렬로 퍼뜨리는 구조이고 내 시뮬레이션은 서비스를 순서대로 거치는 구조라 모양은 다르지만, 1 - 0.99^100이 약 63%이듯 느린 호출을 한 번이라도 만날 확률이 쌓인다는 원리는 같다.</p>
 <h3>재시도를 더하면</h3>
-<p>수업이 연습 문제로 낸 재시도 로직도 붙여 봤다. 호출이 50ms 안에 끝나지 않으면 끊고 한 번 더 부른다. 같은 시드로 돌린 결과를 재시도 전과 나란히 놓으면 아래와 같다.</p>
+<p>수업이 연습 문제로 낸 재시도 로직도 붙여 봤다. 호출이 50ms 안에 끝나지 않으면 끊고 한 번 더 부른다. 이 시뮬레이션은 재시도가 첫 호출과 무관한 새 호출이라고 가정하므로 재시도는 거의 항상 빠르게 끝난다. 서버 과부하처럼 느림이 이어지는 상황이라면 재시도 효과는 이보다 작다. 같은 시드로 돌린 결과를 재시도 전과 나란히 놓으면 아래와 같다.</p>
 <figure class="blog-chart">
 <svg viewbox="0 0 560 380" role="img">
   
@@ -372,9 +373,9 @@ function callWithRetry(timeout = 50): [number, number] {
 </tr>
 </tbody>
 </table></div>
-<p>재시도로 서비스 10개 기준 p99가 299.2ms에서 160.3ms로, 20개 기준 578.8ms에서 302.2ms로 줄었다. 대신 요청당 호출 수가 약 1% 늘었다. 느린 서버가 과부하 때문에 느린 상황이라면 이 추가 호출이 부하를 더 키울 수 있다. 「The Tail at Scale」의 hedged request가 첫 요청이 예상 지연의 95번째 백분위수를 넘길 때까지 기다렸다가 보조 요청을 보내, 추가 부하를 약 5%로 묶는 이유도 여기에 있다고 이해했다.</p>
+<p>재시도로 서비스 10개 기준 p99가 299.2ms에서 160.3ms로, 20개 기준 578.8ms에서 302.2ms로 줄었다. 대신 요청당 호출 수가 약 1% 늘었다. 느린 서버가 과부하 때문에 느린 상황이라면 이 추가 호출이 부하를 더 키울 수 있다. 이 시뮬레이션은 첫 요청을 끊고 다시 보내는 방식이고, 논문의 hedged request는 첫 요청을 살려 둔 채 보조 요청을 하나 더 보낸다는 점이 다르다. 「The Tail at Scale」의 hedged request가 첫 요청이 예상 지연의 95번째 백분위수를 넘길 때까지 기다렸다가 보조 요청을 보내, 추가 부하를 약 5%로 묶는 이유도 여기에 있다고 이해했다.</p>
 <h2>전부 나누지 말고 필요한 곳만 떼어 낸다</h2>
-<p>수업의 마지막 사례는 실전적이었다. 서점 전체를 마이크로서비스로 바꾸는 대신, <a href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">1편의 모듈러 모놀리스</a>에서 연말에 트래픽이 몰리는 주문 도메인만 분리해 따로 확장한다. 모듈 경계가 이미 공개 함수로 정리돼 있다면, 그 함수 호출을 네트워크 호출로 바꾸는 범위가 주문 하나로 줄어든다.</p>
+<p>수업의 마지막 사례는 실전적이었다. 서점 전체를 마이크로서비스로 바꾸는 대신, 1편의 모듈러 모놀리스에서 연말에 트래픽이 몰리는 주문 도메인만 분리해 따로 확장한다. 모듈 경계가 이미 공개 함수로 정리돼 있다면, 그 함수 호출을 네트워크 호출로 바꾸는 범위가 주문 하나로 줄어든다.</p>
 <p>이때 판단 기준으로 나온 개념이 아키텍처 퀀텀이다. 리처즈와 포드는 퀀텀을 독립적으로 배포할 수 있고, 기능 응집도가 높고, 정적 결합이 강하며, 동기식으로 동적 결합된 단위로 정의한다. 수업에서는 이를 확장성, 가용성 같은 특성을 독립적으로 정할 수 있는 단위로 설명했다. 주문을 떼어 냈어도 주문이 결제를 동기로 부르고 DB를 공유한다면, 둘은 여전히 함께 움직이는 한 덩어리다. 어디까지 함께 묶고 어디서 끊을지는 <a href="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/">3편: 아키텍처 퀀텀과 서비스 입도</a>에서 퀀텀을 직접 세어 보며 다룬다.</p>
 <p>마틴 파울러의 <a href="https://martinfowler.com/bliki/MonolithFirst.html">MonolithFirst</a>도 같은 방향을 말한다. 경계를 충분히 이해하기 전에 처음부터 서비스로 나누기보다, 모놀리스에서 시작해 필요한 경계를 찾아 떼어 내는 편이 안전하다는 것이다.</p>
 <h2>자주 묻는 질문</h2>
@@ -385,8 +386,8 @@ function callWithRetry(timeout = 50): [number, number] {
 <h3>서비스 기반과 마이크로서비스 중 무엇부터 시작해야 하나요?</h3>
 <p>드라이빙 특성이 독립 배포와 부분 확장이 아니라면 서비스 기반이 부담이 적다. 데이터베이스를 공유하니 트랜잭션과 조회가 단순하다. 특정 도메인만 독립적으로 확장해야 하는 이유가 생기면 그 도메인부터 DB를 분리해 마이크로서비스로 옮기는 식으로 나아갈 수 있다.</p>
 <h2>정리: 분산의 범위는 품질 요구사항으로 정한다</h2>
-<p>분산 아키텍처는 확장과 독립성을 주지만, 모든 호출을 실패하고 느려질 수 있는 네트워크 위에 올린다. 다섯 가지 스타일은 이 비용을 각자 다르게 나눠 진다. 그래서 스타일을 고를 때는 드라이빙 특성을 먼저 정하고, 그 특성을 얻으려고 감당할 복잡도가 어디까지인지 따져야 한다. 꼬리 지연 시뮬레이션은 그 복잡도가 숫자로 어떻게 드러나는지 보여 줬다. 서비스 하나하나가 빨라도 거치는 단계가 늘면 p99가 빠르게 나빠진다.</p>
-<p>결국 분산 자체가 목적이 아니다. 시스템의 품질 요구사항과 감당할 수 있는 복잡도에 맞춰 나눌 범위를 정하는 게 핵심이다. <a href="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/">다음 편인 3편</a>에서는 그 범위를 정하는 도구인 아키텍처 퀀텀과 서비스 입도를 유니온 파인드로 직접 계산해 본다.</p>
+<p>분산 아키텍처는 확장과 독립성을 주지만, 모든 호출을 실패하고 느려질 수 있는 네트워크 위에 올린다. 다섯 가지 스타일은 이 비용을 각자 다르게 나눠 진다. 그래서 스타일을 고를 때는 드라이빙 특성을 먼저 정하고, 그 특성을 얻으려고 감당할 복잡도가 어디까지인지 따져야 한다. 꼬리 지연 시뮬레이션은 그 복잡도가 숫자로 어떻게 드러나는지 보여 줬다. 서비스 하나하나가 빨라도 거치는 단계가 늘면, 느린 호출을 만날 확률이 1%를 넘는 지점마다 p99가 계단처럼 뛴다.</p>
+<p>결국 분산 자체가 목적이 아니다. 시스템의 품질 요구사항과 감당할 수 있는 복잡도에 맞춰 나눌 범위를 정하는 게 핵심이다. 다음 편인 3편에서는 그 범위를 정하는 도구인 아키텍처 퀀텀과 서비스 입도를 유니온 파인드로 직접 계산해 본다.</p>
 <h2>아키텍처 스타일 시리즈</h2>
 <ol>
 <li><a href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기</a></li>
@@ -394,8 +395,8 @@ function callWithRetry(timeout = 50): [number, number] {
 <li><a href="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/">아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기</a></li>
 </ol>
 <hr>
-<p><strong>글쓴이 HanSungLin</strong> · TypeScript·Node.js 백엔드 개발자입니다. 여러 오픈마켓과 상품·주문을 연동하는 서비스를 운영하며, 레이어드 구조의 웹 서버와 큐 기반 워커로 이뤄진 시스템을 다룹니다. 실무에서 마주친 설계 문제를 이해하려고 소프트웨어 아키텍처를 공부하며 기록합니다. 편집 원칙은 <a href="https://sungrinhan.github.io/dev-notes/about/">소개 페이지</a>에 있고, 틀린 내용은 <a href="https://github.com/Sungrinhan/dev-notes/issues">GitHub 이슈</a>로 알려 주세요. 이 글은 온라인 강의를 들으며 정리한 노트이고, 시뮬레이션 수치는 직접 실행한 결과입니다.</p><!--bs-body:end-->
-<footer class="post-footer"><span>Published at <a href="https://sungrinhan.github.io" data-bs-generated="1">sungrinhan.github.io</a></span><span>2026-11-25 &middot; HanSungLin</span></footer>
+<p><strong>글쓴이 HanSungLin</strong> · TypeScript·Node.js 백엔드 개발자입니다. 여러 오픈마켓과 상품·주문을 연동하는 서비스를 운영하며, 레이어드 구조의 웹 서버와 큐 기반 워커로 이뤄진 시스템을 다룹니다. 실무에서 마주친 설계 문제를 이해하려고 소프트웨어 아키텍처를 공부하며 기록합니다. 편집 원칙은 <a href="https://sungrinhan.github.io/dev-notes/about/">소개 페이지</a>에 있고, 틀린 내용은 <a href="https://github.com/Sungrinhan/dev-notes/issues">GitHub 이슈</a>로 알려 주세요. 다른 글은 <a href="https://sungrinhan.github.io/dev-notes/">dev-notes 글 목록</a>에서 볼 수 있습니다. 이 글은 온라인 강의를 들으며 정리한 노트이고, 시뮬레이션 수치는 직접 실행한 결과입니다.</p><!--bs-body:end-->
+<footer class="post-footer"><span>Published at <a href="https://sungrinhan.github.io" data-bs-generated="1">dev-notes</a></span><span>2026-11-25 &middot; HanSungLin</span></footer>
 </article>
 </body>
 </html>

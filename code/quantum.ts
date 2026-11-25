@@ -14,7 +14,7 @@ class UnionFind {
   find(x: string): string {
     while (this.parent.get(x) !== x) {
       const grand = this.parent.get(this.parent.get(x)!)!;
-      this.parent.set(x, grand); // 경로 압축
+      this.parent.set(x, grand); // 경로 절반 압축(path halving)
       x = grand;
     }
     return x;
