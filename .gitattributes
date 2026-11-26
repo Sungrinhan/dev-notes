@@ -1,0 +1,7 @@
+# 맥(LF)과 회사 Windows(렌더러가 CRLF로 씀)에서 같은 바이트가 저장되게 한다.
+* text=auto eol=lf
+*.pdf binary
+*.webp binary
+*.png binary
+*.jpg binary
+*.jpeg binary
