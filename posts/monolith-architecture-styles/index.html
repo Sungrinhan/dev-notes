@@ -61,6 +61,8 @@ svg{max-width:100%;height:auto}
 figure{margin:0 0 1.75rem}
 figure svg{display:block;margin:0 auto}
 figcaption{color:var(--muted);font-size:.875rem;margin-top:.5rem}
+.chart-muted{fill:#4b5563}
+@media (prefers-color-scheme:dark){.chart-muted{fill:#d1d5db}}
 .table-wrap{max-width:100%;overflow-x:auto;margin:0 0 1.5rem;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-size:.95rem}
 th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}
@@ -80,7 +82,7 @@ th{background:var(--code-bg);font-weight:700}
 <p class="dek">온라인 서점에 쿠폰 할인을 추가하는 예제로 레이어드, 모듈러 모놀리스, 마이크로커널의 분할 기준과 변경 범위, 트레이드오프를 비교한 학습 노트입니다.</p>
 <p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 8 min read &middot; 1658 words</p>
 </header>
-<figure class="hero"><img src="hero.webp" alt="쿠폰 하나로 비교한 모놀리식 세 가지 구조: 레이어드는 3곳, 모듈러 모놀리스는 2곳, 마이크로커널은 1곳을 고친다는 도식" width="1200" height="630"></figure>
+<figure class="hero"><img src="hero.webp" alt="쿠폰 하나로 비교한 모놀리식 세 가지 구조: 레이어드는 3곳, 모듈러 모놀리스는 2곳, 마이크로커널은 1곳을 고친다는 도식" width="1200" height="630" fetchpriority="high"></figure>
 <!--bs-body:start--><p>같은 기능을 만들어도 코드를 어떤 기준으로 나눴느냐에 따라 고칠 파일 수가 달라진다. 수강 중인 온라인 소프트웨어 아키텍처 강의에서 이번 수업은 작은 온라인 서점에 쿠폰 할인을 붙이는 예제 하나로 레이어드, 모듈러 모놀리스, 마이크로커널을 비교했다. 강의 예제 기준으로 쿠폰을 넣을 때 레이어드는 3개 파일, 모듈러 모놀리스는 2곳(새 쿠폰 모듈과 주문 모듈의 호출부), 마이크로커널은 플러그인 파일 1개를 고쳤다. 이 글은 그 숫자가 왜 그렇게 나오는지, 그리고 숫자가 작다고 늘 좋은 건 아니라는 점을 정리한 학습 노트다.</p>
 <blockquote>
 <p><strong>핵심 요약</strong></p>

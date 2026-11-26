@@ -61,6 +61,8 @@ svg{max-width:100%;height:auto}
 figure{margin:0 0 1.75rem}
 figure svg{display:block;margin:0 auto}
 figcaption{color:var(--muted);font-size:.875rem;margin-top:.5rem}
+.chart-muted{fill:#4b5563}
+@media (prefers-color-scheme:dark){.chart-muted{fill:#d1d5db}}
 .table-wrap{max-width:100%;overflow-x:auto;margin:0 0 1.5rem;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-size:.95rem}
 th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}
@@ -80,7 +82,7 @@ th{background:var(--code-bg);font-weight:700}
 <p class="dek">서비스를 얼마나 잘게 나눌지 정하는 기준인 아키텍처 퀀텀과 입도를 온라인 서점 사례로 정리하고, TypeScript 유니온 파인드로 퀀텀 수를 계산해 호출 방식과 DB 분리에 따른 변화를 확인한 학습 노트입니다.</p>
 <p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-25 &middot; 8 min read &middot; 1638 words</p>
 </header>
-<figure class="hero"><img src="hero.webp" alt="아키텍처 퀀텀 도식: 동기 호출과 공유 DB로 묶인 서비스 5개가 퀀텀 1, 비동기 메시지만 보내는 리뷰가 퀀텀 2" width="1200" height="630"></figure>
+<figure class="hero"><img src="hero.webp" alt="아키텍처 퀀텀 도식: 동기 호출과 공유 DB로 묶인 서비스 5개가 퀀텀 1, 비동기 메시지만 보내는 리뷰가 퀀텀 2" width="1200" height="630" fetchpriority="high"></figure>
 <!--bs-body:start--><p>서비스를 여섯 개로 나눴다고 해서 여섯 개가 따로 움직이는 건 아니다. 수강 중인 온라인 소프트웨어 아키텍처 강의의 이번 수업은 그 차이를 아키텍처 퀀텀이라는 개념으로 설명했다. 수업 예제에서는 온라인 서점을 주문, 결제, 알림, 재고, 카탈로그, 리뷰 서비스로 나눴는데, 알림 서비스가 멈추자 동기 호출을 타고 주문까지 멈췄다. 서비스는 여섯 개였지만 함께 배포하고 함께 장애를 겪는 덩어리는 두 개뿐이었다. 이 글은 퀀텀과 입도의 개념을 정리하고, TypeScript로 옮긴 유니온 파인드로 퀀텀을 직접 세어 본 학습 노트다.</p>
 <blockquote>
 <p><strong>핵심 요약</strong></p>
