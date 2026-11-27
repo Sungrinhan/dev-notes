@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d9488" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+<title>마이크로서비스와 독립 배포: 카탈로그를 다시 배포하는 동안 주문은 멈출까</title>
+<meta name="description" content="모놀리스의 배포와 확장 한계에서 출발해 마이크로서비스의 정의와 아홉 가지 특징, 독립 배포와 콘웨이 법칙을 정리하고, 카탈로그를 다시 배포하는 동안 주문 요청이 어떻게 되는지 TypeScript 프로세스 실험으로 확인한 학습 노트입니다.">
+<link rel="canonical" href="https://sungrinhan.github.io/dev-notes/posts/microservices-independent-deployment/">
+<meta name="author" content="HanSungLin">
+<meta name="blog-source-sha256" content="a52b9a7329da68593987d6ca378e8b4bd463cfb5df541b1e7b797ddd42a25bf4">
+<meta name="blog-body-sha256" content="8c45c26dae2a1d3916eb587b8df49dca70a90d7a1df63ca8e7ac6216a8fa9e7a">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:title" content="마이크로서비스와 독립 배포: 카탈로그를 다시 배포하는 동안 주문은 멈출까">
+<meta property="og:description" content="모놀리스의 배포와 확장 한계에서 출발해 마이크로서비스의 정의와 아홉 가지 특징, 독립 배포와 콘웨이 법칙을 정리하고, 카탈로그를 다시 배포하는 동안 주문 요청이 어떻게 되는지 TypeScript 프로세스 실험으로 확인한 학습 노트입니다.">
+<meta property="og:url" content="https://sungrinhan.github.io/dev-notes/posts/microservices-independent-deployment/">
+<meta property="og:image" content="https://sungrinhan.github.io/dev-notes/posts/microservices-independent-deployment/hero.webp">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="카탈로그를 다시 배포하는 동안의 주문 요청 성공률: 모놀리스 89%, 타임아웃 없는 MSA 89%, 타임아웃만 둔 MSA 69%, 타임아웃과 마지막 값을 둔 MSA 100%">
+<meta property="og:site_name" content="dev-notes">
+<meta property="article:published_time" content="2026-11-27">
+<meta property="article:author" content="HanSungLin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="마이크로서비스와 독립 배포: 카탈로그를 다시 배포하는 동안 주문은 멈출까">
+<meta name="twitter:description" content="모놀리스의 배포와 확장 한계에서 출발해 마이크로서비스의 정의와 아홉 가지 특징, 독립 배포와 콘웨이 법칙을 정리하고, 카탈로그를 다시 배포하는 동안 주문 요청이 어떻게 되는지 TypeScript 프로세스 실험으로 확인한 학습 노트입니다.">
+<meta name="twitter:image" content="https://sungrinhan.github.io/dev-notes/posts/microservices-independent-deployment/hero.webp">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "마이크로서비스와 독립 배포: 카탈로그를 다시 배포하는 동안 주문은 멈출까", "description": "모놀리스의 배포와 확장 한계에서 출발해 마이크로서비스의 정의와 아홉 가지 특징, 독립 배포와 콘웨이 법칙을 정리하고, 카탈로그를 다시 배포하는 동안 주문 요청이 어떻게 되는지 TypeScript 프로세스 실험으로 확인한 학습 노트입니다.", "image": "https://sungrinhan.github.io/dev-notes/posts/microservices-independent-deployment/hero.webp", "datePublished": "2026-11-27", "dateModified": "2026-11-27", "author": {"@type": "Person", "name": "HanSungLin"}, "wordCount": 2164, "keywords": "소프트웨어 아키텍처, 마이크로서비스, 독립 배포, 콘웨이 법칙, 장애 대응", "inLanguage": "ko", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://sungrinhan.github.io/dev-notes/posts/microservices-independent-deployment/"}}</script>
+<style>
+:root{--bg:#fafaf9;--surface:#fff;--text:#1c1917;--muted:#57534e;--soft:#78716c;--accent:#0f766e;--accent-soft:#ccfbf1;--accent-deep:#115e59;--border:#e7e5e4;--code-bg:#f5f5f4;--warn:#b91c1c;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04)}
+@media (prefers-color-scheme:dark){:root{--bg:#18181b;--surface:#27272a;--text:#fafafa;--muted:#a1a1aa;--soft:#92929c;--accent:#2dd4bf;--accent-soft:#134e4a;--accent-deep:#99f6e4;--border:#3f3f46;--code-bg:#1f1f23;--warn:#fca5a5;--shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3)}}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.65;margin:0;font-size:17px;-webkit-font-smoothing:antialiased}
+article{max-width:740px;margin:0 auto;padding:3rem 1.5rem 5rem}
+.kicker{font-family:ui-monospace,"SF Mono",Monaco,monospace;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 .85rem;font-weight:600}
+h1{font-size:clamp(2rem,5vw,2.85rem);line-height:1.12;letter-spacing:-.025em;margin:0 0 1.1rem;font-weight:800}
+.dek{color:var(--muted);font-size:clamp(1.05rem,2.5vw,1.2rem);line-height:1.5;margin:0 0 1.75rem;max-width:60ch}
+.byline{color:var(--soft);font-size:.875rem;font-family:ui-monospace,monospace;margin:0 0 2.5rem}
+.updated{color:var(--soft);font-size:.875rem;font-family:ui-monospace,monospace;margin:0 0 2.5rem}
+.byline + .updated{margin-top:-2rem}
+.byline strong{color:var(--text);font-weight:600}
+.hero{margin:0 0 2.5rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.hero img{display:block;width:100%;height:auto;aspect-ratio:1200/630;object-fit:cover}
+h2{font-size:clamp(1.4rem,3vw,1.75rem);line-height:1.22;letter-spacing:-.015em;margin:3rem 0 1rem;font-weight:700;scroll-margin-top:1rem}
+h3{font-size:1.2rem;margin:2rem 0 .75rem;font-weight:700}
+p{margin:0 0 1.25rem}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:var(--accent-deep)}
+code{font-family:ui-monospace,"SF Mono",Monaco,monospace;font-size:.9em;background:var(--code-bg);border:1px solid var(--border);padding:.1em .4em;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;font-size:.875rem}
+pre code{background:none;border:none;padding:0}
+blockquote{border-left:3px solid var(--accent);padding:.4rem 0 .4rem 1.25rem;margin:0 0 1.5rem;color:var(--muted)}
+ul,ol{margin:0 0 1.25rem;padding-left:1.5rem}
+li{margin:.35rem 0}
+strong{font-weight:700;color:var(--text)}
+img{max-width:100%;height:auto}
+svg{max-width:100%;height:auto}
+figure{margin:0 0 1.75rem}
+figure svg{display:block;margin:0 auto}
+figcaption{color:var(--muted);font-size:.875rem;margin-top:.5rem}
+.chart-muted{fill:#4b5563}
+@media (prefers-color-scheme:dark){.chart-muted{fill:#d1d5db}}
+.table-wrap{max-width:100%;overflow-x:auto;margin:0 0 1.5rem;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}
+th{background:var(--code-bg);font-weight:700}
+.post-footer{margin-top:4rem;padding-top:2rem;border-top:1px solid var(--border);font-size:.875rem;color:var(--muted);font-family:ui-monospace,monospace;display:flex;flex-wrap:wrap;gap:.6rem 1.5rem;justify-content:space-between}
+.post-footer a{color:var(--accent);text-decoration:none}
+::selection{background:var(--accent);color:var(--bg)}
+@media print{body{background:#fff;color:#000;font-size:11pt}article{max-width:none;padding:0 1rem}.hero{box-shadow:none}.table-wrap{overflow:visible}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<article>
+<header>
+<p class="kicker">아키텍처 스타일 시리즈 4편</p>
+<h1>마이크로서비스와 독립 배포: 카탈로그를 다시 배포하는 동안 주문은 멈출까</h1>
+<p class="dek">모놀리스의 배포와 확장 한계에서 출발해 마이크로서비스의 정의와 아홉 가지 특징, 독립 배포와 콘웨이 법칙을 정리하고, 카탈로그를 다시 배포하는 동안 주문 요청이 어떻게 되는지 TypeScript 프로세스 실험으로 확인한 학습 노트입니다.</p>
+<p class="byline"><strong>By HanSungLin</strong> &middot; 2026-11-27 &middot; 10 min read &middot; 2164 words</p>
+</header>
+<figure class="hero"><img src="hero.webp" alt="카탈로그를 다시 배포하는 동안의 주문 요청 성공률: 모놀리스 89%, 타임아웃 없는 MSA 89%, 타임아웃만 둔 MSA 69%, 타임아웃과 마지막 값을 둔 MSA 100%" width="1200" height="630" fetchpriority="high"></figure>
+<!--bs-body:start--><p>서비스를 나누면 카탈로그만 고쳐서 카탈로그만 배포할 수 있다. 그러면 카탈로그를 배포하는 동안 주문은 멀쩡할까? 수강 중인 온라인 소프트웨어 아키텍처 강의의 이번 수업은 모놀리스의 배포와 확장 한계에서 출발해, 마이크로서비스 아키텍처(MSA)의 독립 배포가 이를 어떻게 푸는지 다뤘다. 이 글은 MSA의 정의와 특징, 독립 배포와 콘웨이 법칙을 정리하고, 수업의 파이썬 실습을 TypeScript로 옮겨 카탈로그를 다시 배포하는 동안 주문 요청이 어떻게 되는지 직접 잰 학습 노트다.</p>
+<blockquote>
+<p><strong>핵심 요약</strong></p>
+<ul>
+<li>모놀리스는 작은 기능 하나를 고쳐도 앱 전체를 빌드하고 배포해야 하고, 특정 기능만 늘리기 어렵다. MSA는 앱을 비즈니스 능력별 서비스로 나눠 각자 배포하고 확장하게 한다.</li>
+<li>제임스 루이스와 마틴 파울러는 MSA의 공통 특징 아홉 가지를 꼽았다. 모든 MSA가 전부 갖추는 목록이 아니라 대부분이 보이는 경향이다.</li>
+<li>시스템은 그것을 만든 조직의 소통 구조를 닮는 경향이 있다(콘웨이 법칙). 비즈니스 능력별로 기능을 끝까지 맡는 크로스펑셔널 팀이 서비스 단위의 독립 배포를 뒷받침한다.</li>
+<li>무중단 장치가 없는 stop-start 배포 실험에서, 카탈로그를 다시 배포하는 동안의 주문 요청 성공률은 모놀리스와 서비스 간 타임아웃이 없는 MSA가 모두 89.3%였다. 주문이 카탈로그를 동기로 기다리는 한 이 지표는 같았다.</li>
+<li>타임아웃 300ms만 두면 성공률이 69.0%로 떨어졌고, 마지막으로 받은 가격을 대체 값으로 더하자 100%가 됐다. 대신 300건 중 93건 안팎이 예전 가격으로 응답받았다. 동기 결합을 없앤 것이 아니라 장애가 번지는 것을 막은 것이다.</li>
+</ul>
+</blockquote>
+<h2>모놀리스가 배포와 확장에서 막히는 지점</h2>
+<p>모놀리스는 앱 전체가 하나의 배포 단위다. 쿠폰 문구 하나를 고쳐도 앱 전체를 다시 빌드하고 다시 배포해야 하고, 배포하는 동안에는 모든 기능이 함께 멈출 수 있다. <a href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">시리즈 1편의 모듈러 모놀리스</a>처럼 코드 안을 도메인별로 잘 나눠도, 배포 단위가 하나라는 사실은 바뀌지 않는다.</p>
+<p>확장도 같은 문제를 안고 있다. 상품 조회만 트래픽이 몰려도 조회 기능만 따로 늘릴 수 없어서 앱 전체를 여러 벌 띄워야 한다. 거의 쓰이지 않는 관리자 기능까지 같이 복제되니 자원이 낭비된다. 수업은 이 두 한계, 즉 배포와 확장을 기능 단위로 할 수 없다는 점을 MSA가 등장한 배경으로 설명했다.</p>
+<h2>MSA의 정의와 아홉 가지 특징</h2>
+<p>루이스와 파울러는 2014년 3월 25일 글 <a href="https://martinfowler.com/articles/microservices.html">「Microservices」</a>에서 MSA를 하나의 애플리케이션을 작은 서비스들의 묶음으로 만드는 방식으로 설명했다. 각 서비스는 자기 프로세스에서 실행되고 HTTP 리소스 API 같은 가벼운 방식으로 통신하며, 비즈니스 능력을 중심으로 만들어져 완전히 자동화된 배포 장치로 독립적으로 배포된다. 수업은 통신 수단으로 HTTP 요청과 함께 메시지 큐를 들었다.</p>
+<p>같은 글은 MSA의 공통 특징을 아홉 가지로 정리한다. 수업도 이 목록을 따라갔다.</p>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>특징</th>
+<th>뜻</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>서비스를 통한 컴포넌트화(Componentization via Services)</td>
+<td>라이브러리가 아니라 따로 배포되는 서비스로 나눈다</td>
+</tr>
+<tr>
+<td>비즈니스 능력 중심 구성(Organized around Business Capabilities)</td>
+<td>기술 계층이 아니라 주문, 카탈로그 같은 업무 능력으로 서비스와 팀을 나눈다</td>
+</tr>
+<tr>
+<td>프로젝트가 아닌 제품(Products not Projects)</td>
+<td>만든 팀이 운영까지 계속 책임진다</td>
+</tr>
+<tr>
+<td>똑똑한 엔드포인트와 단순한 파이프(Smart endpoints and dumb pipes)</td>
+<td>로직은 서비스 안에 두고 통신 경로는 단순하게 둔다</td>
+</tr>
+<tr>
+<td>분산된 거버넌스(Decentralized Governance)</td>
+<td>서비스마다 맞는 언어와 도구를 고를 수 있다</td>
+</tr>
+<tr>
+<td>분산된 데이터 관리(Decentralized Data Management)</td>
+<td>서비스마다 자기 데이터를 관리한다</td>
+</tr>
+<tr>
+<td>인프라 자동화(Infrastructure Automation)</td>
+<td>빌드, 테스트, 배포를 자동화한다</td>
+</tr>
+<tr>
+<td>장애를 전제한 설계(Design for failure)</td>
+<td>다른 서비스가 언제든 실패할 수 있다고 보고 설계한다</td>
+</tr>
+<tr>
+<td>진화적 설계(Evolutionary Design)</td>
+<td>서비스를 따로 바꾸고 교체할 수 있게 둔다</td>
+</tr>
+</tbody>
+</table></div>
+<p>저자들은 모든 MSA가 아홉 가지를 다 갖추지는 않으며, 대부분의 MSA가 대부분의 특징을 보일 것이라고 덧붙였다. 체크리스트라기보다 경향으로 읽으라는 뜻이다. 아래 실습은 이 중 장애를 전제한 설계를 다룬다. 카탈로그를 따로 다시 배포하는 동안의 일시적 중단이 카탈로그를 동기로 부르는 주문에 어떻게 번지는지, 그리고 주문 쪽의 대응이 그 번짐을 얼마나 막는지 확인한다.</p>
+<h2>독립 배포가 핵심이지만, 동기 호출이 다시 묶는다</h2>
+<p>수업이 MSA의 핵심으로 꼽은 것은 독립 배포다. 서비스마다 배포 시점을 달리할 수 있으니 카탈로그 팀은 주문 팀의 일정을 기다리지 않고 카탈로그만 배포할 수 있다. 확장도 서비스 단위로 할 수 있어서 상품 조회가 몰리면 카탈로그만 늘리면 된다.</p>
+<p>그런데 서비스가 동기 호출로 강하게 연결돼 있으면 이 장점이 줄어든다. 주문 서비스가 가격을 알기 위해 카탈로그를 동기로 호출한다면, 카탈로그를 배포하는 동안 주문도 영향을 받는다. <a href="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/">시리즈 3편</a>의 말로 하면 주문과 카탈로그는 아직 같은 아키텍처 퀀텀이다. 배포 단위는 나뉘었지만 함께 장애를 겪는 덩어리는 그대로다.</p>
+<h3>콘웨이 법칙: 시스템은 조직을 닮는다</h3>
+<p>수업은 서비스 경계를 정할 때 기술만 보지 말고 팀의 소통 구조까지 보라고 했다. 근거가 멜빈 콘웨이가 1968년 4월 Datamation에 실은 <a href="https://www.melconway.com/Home/Committees_Paper.html">「How Do Committees Invent?」</a>다. 콘웨이는 시스템을 설계하는 조직이 그 조직의 소통 구조를 복제한 설계를 만들어 내게 된다고 정리했다. 루이스와 파울러도 비즈니스 능력 중심 구성을 설명하며 이 문장을 인용한다.</p>
+<p>이 법칙을 MSA에 대 보면, 화면 팀, 서버 팀, DB 팀처럼 기술 계층으로 나뉜 조직에서는 계층별 경계가 설계에 그대로 반영되기 쉽다고 읽었다. 그러면 기능 하나를 바꿀 때 여러 팀의 조율이 필요해지고, 서비스를 나눠도 배포 일정이 다시 묶일 수 있다. 그래서 수업은 주문이나 카탈로그 같은 비즈니스 능력 하나를 기획부터 운영까지 한 팀이 맡는 크로스펑셔널 팀 구성을 함께 강조했다. 팀 경계와 서비스 경계를 가깝게 맞추면 다른 팀과 조율하지 않고 배포하기가 쉬워진다. 물론 API 호환성, 데이터 소유권, 배포 자동화도 함께 갖춰져야 한다.</p>
+<h2>TypeScript 실습: 카탈로그를 다시 배포하는 동안 주문은?</h2>
+<p>수업 실습은 카탈로그 서비스와 주문 서비스를 파이썬으로 띄우고, 주문 서비스에 타임아웃과 마지막 응답 값 기억을 더해 카탈로그가 잠시 끊겨도 주문이 멈추지 않는 것을 보여 줬다. 이 글에서는 같은 구조를 TypeScript로 옮기되, 효과를 숫자로 비교하려고 모놀리스와 MSA 세 가지 구성을 같은 조건에서 돌렸다. 외부 라이브러리 없이 Node.js의 <code>node:http</code>와 <code>child_process</code>로 실제 프로세스를 띄웠고, 2026년 11월 27일 Node.js 24에서 실행했다.</p>
+<h3>실험 설정</h3>
+<ul>
+<li><strong>서비스</strong>: 카탈로그는 상품 하나의 가격을 돌려준다. 주문은 카탈로그를 HTTP로 호출해 가격을 받고 주문 접수 응답을 돌려준다. 주문 저장이나 결제는 흉내 내지 않았으므로, 이 실험의 "성공"은 주문 접수 응답(HTTP 200, <code>ok: true</code>)을 받았다는 뜻이다. 비교 대상인 모놀리스는 가격 조회가 같은 프로세스 안의 함수 호출이다.</li>
+<li><strong>배포 모델</strong>: 무중단 장치가 없는 단일 인스턴스 stop-start 배포다. 기존 프로세스에 종료 신호를 보내고, 종료를 확인한 뒤 500ms를 기다렸다가 새 프로세스를 띄운다. 새 프로세스는 포트를 연 뒤 1,500ms 동안 준비 중이라 응답을 미룬다. 캐시를 채우거나 연결을 준비하는 시간을 흉내 낸 것이다. 롤링 배포, 준비 상태 검사(readiness), 복제본은 없다. 새 버전에서는 가격이 15,000원에서 16,000원으로 바뀐다. 모놀리스는 앱 전체를, MSA는 카탈로그만 이렇게 다시 배포한다.</li>
+<li><strong>부하</strong>: 0ms부터 20ms 간격의 고정 스케줄로 주문 요청 300건을 보내고(약 6초), 2,000ms에 배포를 시작한다. 요청을 보내는 쪽은 응답을 5초까지 기다린다.</li>
+<li><strong>비교한 네 구성</strong>: 모놀리스, 서비스 간 타임아웃이 없는 MSA(바깥 클라이언트의 5초 제한만 있다), 카탈로그 호출에 300ms 타임아웃을 둔 MSA, 타임아웃에 마지막으로 받은 가격을 기억해 두었다가 호출이 실패하면 그 값을 쓰는 MSA. 마지막 값에는 만료 시간이 없고, 배포 전 2초 동안 정상 응답을 받아 값이 이미 채워진 상태에서 시작한다.</li>
+</ul>
+<p>500ms와 1,500ms는 실험을 위해 정한 값이라 실제 서비스의 배포 시간과는 다르다. 숫자 자체보다 같은 조건에서 구성 사이의 차이를 보는 실험이다. 구성 사이의 순서도 이 모델에 기대고 있다. 특히 새 프로세스가 준비 중에 요청을 거절하지 않고 응답을 미룬다는 가정 때문에, 기다리면 성공할 요청이 생기고 타임아웃이 그 요청을 끊게 된다. 준비 중에 바로 거절하는 서버라면 타임아웃만 둔 구성과 타임아웃이 없는 구성의 차이는 줄어든다.</p>
+<p>주문 서비스의 핵심은 다음과 같다. <code>timeoutMs</code>가 0이면 서비스 간 타임아웃을 두지 않고, <code>remember</code>가 참이면 마지막 값을 쓴다.</p>
+<pre><code class="language-ts">function order(port: number, catalogPort: number, timeoutMs: number, remember: boolean) {
+  let last: number | undefined; // 마지막으로 받은 가격(만료 시간 없음)
+  serve(port, 0, async () =&gt; {
+    try {
+      const signal = timeoutMs &gt; 0 ? AbortSignal.timeout(timeoutMs) : undefined;
+      const r = await fetch(`http://127.0.0.1:${catalogPort}/price`, { signal });
+      const { price } = (await r.json()) as { price: number };
+      last = price;
+      return [200, { ok: true, price }];
+    } catch (e) {
+      if (remember &amp;&amp; last !== undefined) return [200, { ok: true, price: last, stale: true }];
+      const reason = (e as Error).name === &quot;TimeoutError&quot; ? &quot;catalog-timeout&quot; : &quot;catalog-unreachable&quot;;
+      return [503, { ok: false, reason }];
+    }
+  });
+}
+</code></pre>
+<p>배포 모델, 부하 생성, 집계를 포함한 전체 코드는 <a href="https://github.com/Sungrinhan/dev-notes/blob/main/code/msaDeploy.ts">msaDeploy.ts</a>에 있다. <code>node msaDeploy.ts 5</code>로 구성마다 다섯 번씩 돌리면 중앙값과 범위, 그리고 첫 실행의 실패 원인과 시간대를 출력한다.</p>
+<h3>결과: 기다리면 같고, 끊으면 줄고, 기억하면 버틴다</h3>
+<figure class="blog-chart">
+<svg viewbox="0 0 560 380" role="img" aria-labelledby="chart-1-deploy-title chart-1-deploy-desc">
+  
+  <title id="chart-1-deploy-title">카탈로그 재배포 중 주문 성공률 (%)</title>
+  <desc id="chart-1-deploy-desc">카탈로그를 다시 배포하는 동안의 주문 요청 성공률 가로 막대 차트, 다섯 번 실행한 중앙값. 모놀리스 89.3%, 서비스 간 타임아웃 없는 MSA 89.3%, 타임아웃 300ms MSA 69.0%, 타임아웃과 마지막 값 기억 MSA 100.0%.</desc>
+  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">카탈로그 재배포 중 주문 성공률 (%)</text>
+  <text x="280.0" y="48.0" text-anchor="middle" font-size="12" class="chart-muted" fill="#4b5563"><tspan x="280.0" dy="0">주문 요청 300건, stop-start 배포(0.5초 중단 + 1.5초 준비), 5회 중앙값</tspan></text>
+  <line x1="145" y1="298.0" x2="510" y2="298.0" stroke="currentColor" opacity="0.08"></line>
+<line x1="145" y1="243.0" x2="510" y2="243.0" stroke="currentColor" opacity="0.08"></line>
+<line x1="145" y1="188.0" x2="510" y2="188.0" stroke="currentColor" opacity="0.08"></line>
+<line x1="145" y1="133.0" x2="510" y2="133.0" stroke="currentColor" opacity="0.08"></line>
+<line x1="145" y1="78.0" x2="510" y2="78.0" stroke="currentColor" opacity="0.08"></line>
+<text x="136.0" y="109.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">모놀리스</tspan></text>
+<rect x="145" y="78.0" width="325.9" height="49.0" rx="4" fill="#f97316"></rect>
+<text x="478.9" y="109.8" font-size="11" fill="currentColor">89.3</text>
+<text x="136.0" y="166.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">MSA, 타임아웃 없음</tspan></text>
+<rect x="145" y="135.0" width="325.9" height="49.0" rx="4" fill="#38bdf8"></rect>
+<text x="478.9" y="166.8" font-size="11" fill="currentColor">89.3</text>
+<text x="136.0" y="223.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">MSA, 타임아웃 300ms</tspan></text>
+<rect x="145" y="192.0" width="251.8" height="49.0" rx="4" fill="#a78bfa"></rect>
+<text x="404.9" y="223.8" font-size="11" fill="currentColor">69</text>
+<text x="136.0" y="280.9" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">MSA, 타임아웃 + 마지막</tspan><tspan x="136.0" dy="12">값</tspan></text>
+<rect x="145" y="249.0" width="365.0" height="49.0" rx="4" fill="#22c55e"></rect>
+<text x="518.0" y="280.9" font-size="11" fill="currentColor">100</text>
+  <text x="280.0" y="366" text-anchor="middle" font-size="10" class="chart-muted" fill="#4b5563">Source: msaDeploy.ts 실행, Node.js 24, 2026-11-27</text>
+</svg>
+<figcaption>출처: msaDeploy.ts 실행, 2026-11-27. 막대 끝 숫자는 다섯 번 돌린 주문 요청 성공률(%)의 중앙값이다.</figcaption>
+</figure>
+
+<p>다섯 번 돌린 결과를 표로 옮기면 다음과 같다. 값은 중앙값이고 괄호 안은 범위다. "p99 전체"는 실패와 대체 값 응답을 포함한 요청 300건 전부의 응답 시간이라 성공률과 함께 읽어야 한다.</p>
+<div class="table-wrap" role="region" aria-label="Table" tabindex="0"><table>
+<thead>
+<tr>
+<th>구성</th>
+<th>성공률</th>
+<th>p99 전체</th>
+<th>p99 성공 요청</th>
+<th>마지막 값 응답</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>모놀리스</td>
+<td>89.3% (89.0~89.7%)</td>
+<td>1,440ms</td>
+<td>1,457ms</td>
+<td>0건</td>
+</tr>
+<tr>
+<td>MSA, 서비스 간 타임아웃 없음</td>
+<td>89.3% (89.0~89.7%)</td>
+<td>1,459ms</td>
+<td>1,491ms</td>
+<td>0건</td>
+</tr>
+<tr>
+<td>MSA, 타임아웃 300ms</td>
+<td>69.0% (68.7~69.7%)</td>
+<td>334ms</td>
+<td>272ms</td>
+<td>0건</td>
+</tr>
+<tr>
+<td>MSA, 타임아웃 300ms + 마지막 값</td>
+<td>100% (100~100%)</td>
+<td>338ms</td>
+<td>338ms</td>
+<td>93건 (92~95건)</td>
+</tr>
+</tbody>
+</table></div>
+<p>코드가 출력한 첫 실행의 시간대에서 실패와 느린 응답 구간만 옮기면 다음과 같다. 네 구성에서 기존 프로세스는 2,012~2,023ms에 끝났고 새 프로세스는 2,630~2,654ms에 포트를 열었다. 500ms 대기에 종료와 기동 시간이 더해져 실제로는 0.6초 남짓 포트가 닫혀 있었다.</p>
+<pre><code class="language-text">모놀리스: 실패(entry-unreachable) 33건 2014~2649ms | 성공, 300ms 초과 61건 2664~3865ms
+MSA, 서비스 간 타임아웃 없음: 실패(catalog-unreachable) 31건 1981~2580ms | 성공, 300ms 초과 63건 2611~3846ms
+MSA, 타임아웃 300ms: 실패(catalog-unreachable) 33건 1971~2602ms | 실패(catalog-timeout) 61건 2621~3820ms
+MSA, 타임아웃 300ms + 마지막 값: 마지막 값 94건 1990~3844ms
+</code></pre>
+<p><strong>모놀리스와 서비스 간 타임아웃이 없는 MSA는 성공률과 p99가 거의 같았다.</strong> 실패 30건 남짓은 포트가 닫혀 있던 0.6초 전후에 몰렸다. MSA 구성에서 2,000ms보다 조금 앞선 요청이 실패한 것은 카탈로그가 종료될 때 처리 중이던 요청이 끊겼기 때문이다. 그 뒤 새 프로세스가 준비 중이던 1.2초 동안 보낸 60건 남짓은 성공했지만 최대 1.5초를 기다렸다. 카탈로그만 따로 배포했는데도, 주문이 카탈로그를 동기로 기다리는 한 이 두 지표는 앱 전체를 배포한 모놀리스와 같게 나왔다. 3편에서 동기 호출이 서비스를 한 퀀텀으로 묶는다고 한 것과 맞는 결과다. 측정하지 않은 차이도 있다. 모놀리스는 진입 포트 자체가 닫혀 연결 오류가 나고 주문 말고 다른 기능도 같이 멈추지만, MSA는 주문 서비스가 살아서 503과 실패 원인을 돌려주고 카탈로그에 기대지 않는 서비스는 계속 돈다.</p>
+<p><strong>타임아웃만 두면 느린 실패가 빠른 실패로 바뀌었다.</strong> 전체 p99는 1.4초대에서 0.33초로 줄었지만, 이는 주문이 빨라졌다는 뜻이 아니라 준비 중인 카탈로그를 기다리던 요청 61건을 300ms에서 실패로 끊었다는 뜻이다. 그래서 성공률은 69.0%로 오히려 떨어졌다. 타임아웃은 실패를 없애지 않는다. 대신 주문 서비스가 응답 없는 상대를 애플리케이션이 정한 짧은 상한 없이 기다리며 요청을 쌓아 두지 않게 해 준다.</p>
+<p><strong>타임아웃에 마지막 값을 더하자 모든 요청이 주문 접수 응답을 받았다.</strong> 대가는 93건 안팎이 마지막으로 받은 가격 15,000원으로 응답받았다는 점이다. 이 중 포트가 닫혀 있던 동안의 요청은 어차피 새 가격을 받을 수 없었지만, 준비 중에 300ms에서 끊긴 요청은 준비 완료를 기다렸다면 16,000원을 받을 수 있었다. 마지막 값에는 만료 시간이 없으므로, 카탈로그가 오래 끊기면 그만큼 오래된 가격으로 계속 응답한다. 또 이 결과는 상품이 하나이고 배포 전에 값을 이미 받아 둔 조건에서 나왔다. 처음부터 카탈로그가 끊겨 있었다면 쓸 값이 없어 실패했을 것이다.</p>
+<p>이 구성도 정상일 때는 매 요청마다 카탈로그를 동기로 부르고 최대 300ms를 기다린다. 따라서 주문과 카탈로그가 다른 퀀텀으로 떨어진 것이 아니다. 바뀐 것은 카탈로그가 실패했을 때 주문이 어떻게 응답하느냐, 즉 장애가 번지는 범위다. 퀀텀까지 나누려면 주문이 가격 사본을 따로 갖고 비동기로 갱신하는 식으로 정상 경로의 동기 호출을 없애야 한다.</p>
+<h2>실험이 보여 준 MSA의 비용</h2>
+<p>수업은 MSA의 비용으로 함수 호출이 네트워크 호출로 바뀌며 생기는 지연과 단절, 데이터 일관성 유지, 서비스 운영과 감시의 복잡도를 꼽았다. 이번 실험으로 확인한 것은 앞의 두 가지 중 일부다.</p>
+<ul>
+<li><strong>네트워크 호출의 단절</strong>: 모놀리스에서는 함수 호출이던 가격 조회가 MSA에서는 끊길 수 있는 네트워크 호출이 됐고, 타임아웃 값 하나가 성공률과 p99를 함께 바꿨다. 호출이 여러 번 쌓일 때의 지연은 <a href="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/">2편의 꼬리 지연 시뮬레이션</a>에서 다뤘다.</li>
+<li><strong>값의 신선도</strong>: 마지막 값을 쓰는 방식은 가용성을 얻는 대신 예전 가격을 받아들이는 선택이다. 가격처럼 돈이 걸린 값이라면 얼마나 오래된 값까지 써도 되는지, 그 시간이 지나면 주문을 막을지를 정해야 한다. 3편에서 본 것처럼 이런 결정은 개발팀 혼자가 아니라 사업 담당자와 함께 내려야 한다.</li>
+</ul>
+<p>운영과 감시의 비용은 이 실험에서 재지 않았다. 다만 서비스 수가 늘수록 배포 파이프라인과 지표가 서비스마다 생기므로 인프라 자동화의 필요성이 커진다. 수업은 모든 앱에 MSA를 적용하기보다, 서비스를 나눠서 얻는 이점이 운영 부담보다 큰지를 먼저 따져 보라고 했다. 경계가 분명해질 때까지 모놀리스로 시작하라는 마틴 파울러의 <a href="https://martinfowler.com/bliki/MonolithFirst.html">MonolithFirst</a>도 같은 방향이다.</p>
+<h2>자주 묻는 질문</h2>
+<h3>서비스를 나누면 배포할 때 무중단이 되나요?</h3>
+<p>저절로 되지는 않는다. 실험에서 서비스 간 타임아웃이 없는 MSA는 카탈로그만 배포했는데도 모놀리스와 같은 비율의 주문 요청을 잃었다. 이 실험은 무중단 장치가 없는 stop-start 배포라서, 새 버전이 준비를 마친 뒤에 요청을 받게 하는 배포 방식이나 복제본을 두면 결과가 달라진다. 호출하는 쪽의 타임아웃과 대체 값은 그런 배포 방식과 별개로, 상대가 실패했을 때 장애가 번지는 범위를 줄인다.</p>
+<h3>타임아웃은 얼마로 잡아야 하나요?</h3>
+<p>정답은 없다. 상대 서비스의 평소 응답 시간보다는 충분히 길어야 정상 요청을 끊지 않고, 내 서비스가 사용자에게 약속한 응답 시간보다는 짧아야 의미가 있다. 실험의 카탈로그는 평소 몇 ms 안에 응답해서 300ms면 정상 요청을 끊지 않았다. 대신 준비 중인 카탈로그를 기다렸다면 성공했을 요청은 끊었다.</p>
+<h3>마지막 값을 기억하는 건 캐시와 무엇이 다른가요?</h3>
+<p>넓게 보면 캐시의 한 형태다. 다만 평소에는 캐시한 값을 쓰지 않고 매번 카탈로그를 부르며, 호출이 실패했을 때만 캐시한 마지막 값을 꺼내 쓴다. 평소에도 캐시를 먼저 읽어 호출을 줄이는 방식과 달리, 오류가 났을 때만 오래된 값을 허용하는 대체 값(fallback)으로 쓴 것이다.</p>
+<h2>정리: 나누는 것만으로는 독립적이지 않다</h2>
+<p>MSA는 모놀리스의 배포와 확장 한계를 서비스 단위의 독립 배포로 푼다. 하지만 서비스를 나눈 것만으로는 주문이 카탈로그 배포의 영향에서 벗어나지 못했다. 실험에서 주문이 카탈로그를 동기로 기다리자, 카탈로그만 배포해도 주문 요청 성공률은 모놀리스와 같았다. 타임아웃은 느린 실패를 빠른 실패로 바꿨고, 마지막 값까지 더해서야 모든 요청이 응답을 받았다. 그 대가로 가격의 신선도를 양보했고, 동기 결합 자체는 그대로 남았다.</p>
+<p>서비스 경계는 기술만으로 정해지지 않는다. 콘웨이 법칙대로 팀의 소통 구조가 경계를 닮게 만들고, 장애 대응과 운영 비용이 경계의 값을 정한다. 서비스를 나눌지보다, 나눈 뒤 상대가 실패했을 때 무엇을 포기할지를 먼저 묻게 된 수업이었다.</p>
+<h2>아키텍처 스타일 시리즈</h2>
+<ol>
+<li><a href="https://sungrinhan.github.io/dev-notes/posts/monolith-architecture-styles/">레이어드 vs 모듈러 모놀리스 vs 마이크로커널: 쿠폰 기능 하나로 비교하기</a></li>
+<li><a href="https://sungrinhan.github.io/dev-notes/posts/distributed-architecture-tail-latency/">분산 아키텍처 5가지 스타일과 꼬리 지연</a></li>
+<li><a href="https://sungrinhan.github.io/dev-notes/posts/architecture-quantum-granularity/">아키텍처 퀀텀과 서비스 입도: 유니온 파인드로 퀀텀 세기</a></li>
+<li>마이크로서비스와 독립 배포: 카탈로그를 다시 배포하는 동안 주문은 멈출까 (이 글)</li>
+</ol>
+<hr>
+<p><strong>글쓴이 HanSungLin</strong> · TypeScript·Node.js 백엔드 개발자입니다. 여러 오픈마켓과 상품·주문을 연동하는 서비스를 운영하며, 레이어드 구조의 웹 서버와 큐 기반 워커로 이뤄진 시스템을 다룹니다. 실무에서 마주친 설계 문제를 이해하려고 소프트웨어 아키텍처를 공부하며 기록합니다. 편집 원칙은 <a href="https://sungrinhan.github.io/dev-notes/about/">소개 페이지</a>에 있고, 틀린 내용은 <a href="https://github.com/Sungrinhan/dev-notes/issues">GitHub 이슈</a>로 알려 주세요. 다른 글은 <a href="https://sungrinhan.github.io/dev-notes/">dev-notes 글 목록</a>에서 볼 수 있습니다. 이 글은 온라인 강의를 들으며 정리한 노트이고, 실습 코드는 수업의 파이썬 예제를 TypeScript로 옮기고 비교 구성을 더해 실행한 것입니다.</p><!--bs-body:end-->
+<footer class="post-footer"><span>Published at <a href="https://sungrinhan.github.io" data-bs-generated="1">dev-notes</a></span><span>2026-11-27 &middot; HanSungLin</span></footer>
+</article>
+</body>
+</html>
